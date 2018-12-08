@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Little Roguelike</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="https://storage.googleapis.com/app.klipse.tech/css/codemirror.css">
+    <link rel="stylesheet" href="/css/main.css">
+  </head>
+  <body>
+
+  <div class="container">
+    <h1><del>My</del>Your Little Roguelike</h1>
+    <div class="main" style="display: grid; grid-template-columns: 50% 50%; grid-column-gap: 10px">
+      <div class="playground">
+        <strong>Top level forms:</strong>
+        <pre><code class="language-klipse">(require '[reagent.core :as r]
+          '[re-frame.core :as rf])
+        </code></pre>
+        <strong>REPL:</strong>
+        <pre><code class="language-klipse">
+        </code></pre>
+        <strong>Code:</strong>
+        <pre><code class="language-reagent">
+    (defn screen-view []
+      [:div])
+
+    (defn app []
+      (let [on-key-press (fn [e]
+                           ;Nothing really happening here
+                          )]
+        (.removeEventListener (.-body js/document) "keydown" on-key-press)
+        (.addEventListener (.-body js/document) "keydown" on-key-press)
+        [screen-view]))
+        </code></pre>
+      </div>
+      <div style="overflow-x: scroll; height: 800px; border: 1px solid #e8e8e8; border-radius: 3px">
+        <strong>Instructions:</strong>
+        <div>
+          <p><strong>Step 0:</strong> Take a look at what's written on the left hand side.</p>
+          <p>It's fairly likely that none of it makes any sense, but that's ok :)...</p>
+          <p>What we're going to do is step by step, build up some basic functionality which will eventually form a roguelike.</p>
+          <p>That you'll eventually be able to take away with you and tinker on your own with!</p>
+          <p>PS: This isn't a complete language tutorial and isn't trying to be, if that's what you're looking
+            for perhaps check out the excellent <a href="http://timothypratley.github.io/power-turtle/">Power Turtle</a>
+            for something in a similar style.</p>
+          <p>PPS: Finally see that thing called the <em>REPL</em>? It's a place where you can try stuff out and also get
+          some documentation if I use a function that you don't understand.</p>
+          <p>Try example to put this in:</p>
+          <pre><code>(doc get)
+          </code></pre>
+          <p>Now you should see the text below:</p>
+          <pre><code>-------------------------
+cljs.core/get
+([o k] [o k not-found])
+Returns the value mapped to key, not-found or nil if key not present.
+          </code></pre>
+          <p>Use it a lot! I know I do :)...</p>
+
+        </div>
+        <div>
+          <p><strong>Step 1:</strong> Let's get a blank screen at the bottom for us to play with</p>
+
+          <p>See the block of code below? Let's paste that above <em>screen-view</em></p>
+          <pre><code>(defn game-view []
+ [:svg {:width  200
+        :height 200
+        :on-context-menu #(identity false)
+        :view-box (str 0 " " 0 " " 200 " " 200)
+        :pointer-events :all}])
+          </code></pre>
+          <p>Then let's replace that <em>[:div]</em> inside <em>screen-view</em> with the code below</p>
+          <pre><code>[game-view]
+          </code></pre>
+          <p>so it looks like this:</p>
+          <pre><code>(defn screen-view []
+  [game-view])
+          </code></pre>
+          <p>Now I don't know about you, but I can't really see the screen very clearly there, so let's colour it in!
+            Add the code below:</p>
+          <pre><code>:style {:background-color :white}
+          </code></pre>
+          <p>to adjust <em>game-view</em> to look like a so it looks like this:</p>
+          <pre><code>(defn game-view []
+ [:svg {:width  200
+        :height 200
+        :on-context-menu #(identity false)
+        :view-box (str 0 " " 0 " " 200 " " 200)
+        :pointer-events :all
+        :style {:background-color :white}}])
+          </code></pre>
+        </div>
+        <div>
+          <p><strong>Step 2:</strong> Let's get something on that blank screen we just made!</p>
+
+          <p>On the top line of <em>game-view</em> it should look like this:</p>
+          <pre><code>(defn game-view []
+          </code></pre>
+
+          <p>See those square brackets? Add the word <em>entity</em> to it.</p>
+          <pre><code>(defn game-view [entity]
+          </code></pre>
+
+          <p>Now see the block of code below? Let's paste that in the bottom of <em>game-view</em></p>
+          <pre><code>(let [{:keys [x y glyph type]} entity]
+          [type {:x (+ (* font-scale x) 10) :y (+ (* font-scale y) 10)} glyph])
+          </code></pre>
+
+          <p>It should now look like this:</p>
+          <pre><code>(defn game-view [entity]
+ [:svg {:width  200
+        :height 200
+        :on-context-menu #(identity false)
+        :view-box (str 0 " " 0 " " 200 " " 200)
+        :pointer-events :all
+        :style {:background-color :white}}
+    (let [{:keys [x y glyph type]} entity]
+      [type {:x (+ (* 10 x) 10) :y (+ (* 10 y) 10)} glyph])])
+          </code></pre>
+
+          <p>Now the result of all that effort should be something broken! Like the text below:</p>
+          <pre><code>#error {:message "ERROR", :data {:tag :cljs/analysis-error}, :cause #object[Error Error: Assert failed: Invalid Hiccup form: [nil {:x 10, :y 10} nil]
+ (in app > cljs.user.screen_view > cljs.user.game_view)
+(valid-tag? tag)]}
+          </code></pre>
+
+          <p>It might not look exactly like that, but I doubt it will work, mostly as we haven't finished!
+            We still need to adjust <em>screen-view</em> can you see why? Have a think, it will be useful
+          for your future understanding :)...</p>
+
+          <p>If you spotted that we just changed <em>game-view</em> to take an extra value but we're not giving
+          any in <em>screen-view</em> then well done :)...</p>
+
+          <p>So adjust <em>screen-view</em> so that it looks like the code below:</p>
+          <pre><code>(defn screen-view []
+  (let [entity {:x 5 :y 4 :glyph "@" :type :text}]
+    [game-view entity]))
+          </code></pre>
+
+          <p>Congrats! We now have our familiar @.</p>
+
+          <p>As an aside before we move on, why don't you try tweaking the values of
+            <em>:x</em> and <em>:y</em> inside <em>screen-view</em>?
+          What does increasing and decreasing it do?
+          Can you make the @ disappear? Can you work out why that happens?</p>
+        </div>
+
+        <div>
+          <p><strong>Step 3:</strong> Let's get moving!</p>
+          <p>So how do we get movement working? So we need to discuss state! Basically, we have this <em>entity</em> thing
+          and we want it to move around.</p>
+
+          <p>Well if you were playing with the <em>:x</em> and <em>:y</em> earlier you'll have noticed that we essentially
+          want those to change, so we can represent movement!</p>
+
+          <p>How do we do that?</p>
+
+          <p>Well in the language we're working in we try and be pretty explicit about that kind of stuff, and we try
+          and box up things like that state so that we can think about and track it as easily as possible.</p>
+
+          <p>So we need a few things to do this:</p>
+          <ol>
+            <li>A way of setting a starting state</li>
+            <li>A way of reading state</li>
+            <li>A way of writing state</li>
+          </ol>
+
+          <p>Let's start with setting a starting state!</p>
+          <pre><code>(rf/reg-event-db
+  :init
+  (fn [db _]
+    (assoc db :player {:x 1 :y 1 :glyph "@" :type :text})))
+          </code></pre>
+
+          <p>Next let's do reading state! Add the code below above <em>game-view</em></p>
+          <pre><code>(rf/reg-sub
+  :player
+  (fn [db _]
+    (get db :player)))
+          </code></pre>
+
+          <p>And finally the writing state! Add the code below above <em>game-view</em></p>
+          <pre><code>(rf/reg-event-db
+  :move-player
+  (fn [db [_ x y]]
+    (-> db
+      (update-in [:player :x] + x)
+      (update-in [:player :y] + y))))
+          </code></pre>
+
+          <p>That may not seemed to have done much, but we've now captured the state of the player.</p>
+
+          <p>Now let's make use of it.</p>
+
+          <p>At the bottom of <em>app</em> above <em>[screen-view]</em> add the code below:</p>
+          <pre><code>(rf/dispatch [:init])
+          </code></pre>
+
+          <p>It should now look like this:</p>
+          <pre><code>(defn app []
+  (let [on-key-press (fn [e]
+           ;Nothing really happening here
+  )]
+    (.removeEventListener (.-body js/document) "keydown" on-key-press)
+    (.addEventListener (.-body js/document) "keydown" on-key-press)
+    (rf/dispatch [:init])
+    [screen-view]))
+          </code></pre>
+
+          <p>Change <em>game-view</em> replacing it with the code below:</p>
+          <pre><code>(defn game-view [entity]
+  (fn [entity]
+    [:svg {:width  200
+           :height 200
+           :on-context-menu #(identity false)
+           :view-box (str 0 " " 0 " " 200 " " 200)
+           :pointer-events :all
+           :style {:background-color :white}}
+      (let [{:keys [x y glyph type]} @entity]
+         [type {:x (+ (* 10 x) 10) :y (+ (* 10 y) 10)} glyph])]))
+          </code></pre>
+
+          <p>Change <em>screen-view</em> replacing</p>
+          <pre><code>{:x 5 :y 4 :glyph "@" :type :text}
+          </code></pre>
+          <p>with the code below:</p>
+          <pre><code>@(rf/subscribe [:player])
+          </code></pre>
+
+          <p>It should now look like this:</p>
+          <pre><code>(defn screen-view []
+  (let [entity @(rf/subscribe [:player])]
+    [game-view entity]))
+          </code></pre>
+
+          <p>If you check the @ should have moved to position <em>{:x 1 :y 1}</em></p>
+
+          <p>Now we just need to wire up some events.</p>
+
+          <p>Inside the <em>let</em> above <em>on-key-press</em> add the code below:</p>
+          <pre><code>key-ent->dir {37 :left
+              38 :up
+              39 :right
+              40 :down
+              65 :left
+              87 :up
+              68 :right
+              83 :down}
+  dir->move {:left  [ 0  1]
+             :right [ 0 -1]
+             :up    [ 1  0]
+             :down  [-1  0]}
+          </code></pre>
+
+          <p>Let's now adjust <em>on-key-press</em> inside the <em>app</em>
+            which currently looks like this:</p>
+          <pre><code>(fn [e]
+  ;Nothing really happening here
+  )
+          </code></pre>
+
+          <p>Not very exciting is it? Let's change it so it looks like this:</p>
+          <pre><code>(fn [e]
+  (let [dir (key-ent->dir (.-which e))
+        move (dir->move dir)
+        [x y] move]
+    (when (and x y)
+      (rf/dispatch [:move-player x y]))))
+          </code></pre>
+
+          <p>Ok, after that it should look like this:</p>
+          <pre><code>(defn app []
+  (let [key-ent->dir {37 :left
+                      38 :up
+                      39 :right
+                      40 :down
+                      65 :left
+                      87 :up
+                      68 :right
+                      83 :down}
+        dir->move {:left  [ 0  1]
+                   :right [ 0 -1]
+                   :up    [ 1  0]
+                   :down  [-1  0]}
+
+         on-key-press (fn [e]
+                        (let [dir (key-ent->dir (.-which e))
+                              move (dir->move dir)
+                              [x y] move]
+                          (when (and x y)
+                           (rf/dispatch [:move-player x y]))))
+            ]
+    (.removeEventListener (.-body js/document) "keydown" on-key-press)
+    (.addEventListener (.-body js/document) "keydown" on-key-press)
+    (rf/dispatch [:init])
+    [screen-view]))
+          </code></pre>
+
+          <p>Now try moving!</p>
+
+          <p>Err, that's odd, you may have noticed a problem? Question is, can you fix it?</p>
+        </div>
+
+        <div>
+          <p><strong>Step 4:</strong> Fixing the bug!</p>
+          <p>So the problem is in <em>dir->move</em> we need to change what's below</p>
+
+          <pre><code>{:left  [ 0  1]
+  :right [ 0 -1]
+  :up    [ 1  0]
+  :down  [-1  0]}
+          </code></pre>
+
+          <p>to this:</p>
+          <pre><code>{:left  [-1  0]
+  :right [ 1  0]
+  :up    [ 0  1]
+  :down  [ 0 -1]}
+          </code></pre>
+
+          <p>It's fairly likely that none of it makes any sense, but that's ok :)...</p>
+          <p>What we're going to do is step by step, build up some basic functionality which will eventually form a roguelike.</p>
+          <p>That you'll eventually be able to take away with you and tinker on your own with!</p>
+          <p>PS: This isn't a complete language tutorial and isn't trying to be, if that's what you're looking
+            for perhaps check out the excellent <a href="http://timothypratley.github.io/power-turtle/">Power Turtle</a>
+            for something in a similar style.</p>
+          <p>PPS: Finally see that thing called the <em>REPL</em>? It's a place where you can try stuff out and also get
+            some documentation if I use a function that you don't understand.</p>
+          <p>Try example to put this in:</p>
+          <pre><code>(doc get)
+          </code></pre>
+          <p>Now you should see the text below:</p>
+          <pre><code>-------------------------
+cljs.core/get
+([o k] [o k not-found])
+Returns the value mapped to key, not-found or nil if key not present.
+          </code></pre>
+          <p>Use it a lot! I know I do :)...</p>
+
+        </div>
+
+        <div>
+          <p><strong>Finally</strong> The complete program.</p>
+          <p>That's all for the moment. I just wrote this as a starting point, and I do intend to expand/improve it.</p>
+          <p>I'm aware there's some fiddly issues with events I need to fix. It isn't normally a problem for me,
+          but working in this tutorial environment is rather new and I intend to fix is asap!</p>
+          <p>Hope you had fun!</p>
+          <p>As an aide, the entire program appears below in full.</p>
+          <pre><code>(rf/reg-event-db
+  :init
+  (fn [db _]
+    (assoc db :player {:x 1 :y 1 :glyph "@" :type :text})))
+
+(rf/reg-sub
+  :player
+  (fn [db _]
+    (get db :player)))
+
+(rf/reg-event-db
+  :move-player
+  (fn [db [_ x y]]
+    (-> db
+      (update-in [:player :x] + x)
+      (update-in [:player :y] + y))))
+
+
+(defn game-view [entity]
+ (fn [entity]
+   [:svg {:width  200
+          :height 200
+          :on-context-menu #(identity false)
+          :view-box (str 0 " " 0 " " 200 " " 200)
+          :pointer-events :all
+          :style {:background-color :white}}
+      (let [{:keys [x y glyph type]} @entity]
+        [type {:x (+ (* 10 x) 10) :y (+ (* 10 y) 10)} glyph])]))
+
+(defn screen-view []
+  (let [entity (rf/subscribe [:player])]
+    [game-view entity]))
+
+(defn app []
+  (let [key-ent->dir {37 :left
+                      38 :up
+                      39 :right
+                      40 :down
+                      65 :left
+                      87 :up
+                      68 :right
+                      83 :down}
+        dir->move {:left  [-1  0]
+                   :right [ 1  0]
+                   :up    [ 0 -1]
+                   :down  [ 0  1]}
+
+         on-key-press (fn [e]
+                        (let [dir (key-ent->dir (.-which e))
+                              move (dir->move dir)
+                              [x y] move]
+                          (when (and x y)
+                            (rf/dispatch [:move-player x y]))))]
+    (.removeEventListener (.-body js/document) "keydown" on-key-press)
+    (.addEventListener (.-body js/document) "keydown" on-key-press)
+    (rf/dispatch [:init])
+    [screen-view]))
+          </code></pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.klipse_settings = {
+      codemirror_options_in: {
+        lineWrapping: true,
+        autoCloseBrackets: true
+      },
+      codemirror_options_out: {
+        lineWrapping: true
+      },
+      beautify_strings: true,
+      selector: '.language-klipse',
+      selector_eval_js: '.language-klipse-eval-js, .language-eval-js',
+      selector_jsx: '.language-klipse-jsx',
+      selector_render_jsx: '.language-render-jsx',
+      selector_es2017: '.language-es2017',
+      selector_brainfuck: '.language-brainfuck',
+      selector_transpile_jsx: '.language-transpile-jsx',
+      selector_eval_php: '.language-klipse-eval-php',
+      selector_eval_markdown: '.language-klipse-markdown',
+      selector_eval_lambdaway: '.language-klipse-lambdaway',
+      selector_eval_python_client: '.language-klipse-python, .language-eval-python',
+      selector_eval_html: '.language-klipse-html',
+      selector_sql: '.language-klipse-sql',
+      selector_eval_ruby: '.language-klipse-eval-ruby, .language-eval-ruby',
+      selector_eval_scheme: '.language-klipse-scheme, .language-eval-scheme',
+      selector_eval_clisp: '.language-klipse-clisp',
+      selector_eval_cpp: '.language-klipse-cpp',
+      selector_google_charts: '.language-google-chart',
+      selector_plot: '.language-plot',
+      selector_oblivion: '.language-oblivion',
+      selector_lua: '.language-klipse-lua',
+      selector_js: '.language-klipse-js',
+      selector_eval_ocaml: '.language-klipse-ocaml',
+      selector_transpile_ocaml: '.language-transpile-ocaml',
+      selector_transpile_reason_3: '.language-transpile-reason',
+      selector_transpile_reason_3_to_ocaml: '.language-transpile-reason-to-ocaml',
+      selector_eval_reason_3: '.language-klipse-reason',
+      selector_eval_reason_3_with_types: '.language-klipse-reason-types',
+      selector_eval_ocaml_with_types: '.language-klipse-ocaml-types',
+      selector_ocaml_to_reason: '.language-ocaml-to-reason',
+      selector_reagent: '.language-reagent',
+      }
+    </script>
+    <script src="https://storage.googleapis.com/app.klipse.tech/plugin/js/klipse_plugin.js?v=7.5.1"></script>
+
+  </body>
+</html>

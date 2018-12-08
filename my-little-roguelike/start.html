@@ -305,36 +305,17 @@ Returns the value mapped to key, not-found or nil if key not present.
           <p>So the problem is in <em>dir->move</em> we need to change what's below</p>
 
           <pre><code>{:left  [ 0  1]
-  :right [ 0 -1]
-  :up    [ 1  0]
-  :down  [-1  0]}
+ :right [ 0 -1]
+ :up    [ 1  0]
+ :down  [-1  0]}
           </code></pre>
 
           <p>to this:</p>
           <pre><code>{:left  [-1  0]
-  :right [ 1  0]
-  :up    [ 0  1]
-  :down  [ 0 -1]}
+ :right [ 1  0]
+ :up    [ 0 -1]
+ :down  [ 0  1]}
           </code></pre>
-
-          <p>It's fairly likely that none of it makes any sense, but that's ok :)...</p>
-          <p>What we're going to do is step by step, build up some basic functionality which will eventually form a roguelike.</p>
-          <p>That you'll eventually be able to take away with you and tinker on your own with!</p>
-          <p>PS: This isn't a complete language tutorial and isn't trying to be, if that's what you're looking
-            for perhaps check out the excellent <a href="http://timothypratley.github.io/power-turtle/">Power Turtle</a>
-            for something in a similar style.</p>
-          <p>PPS: Finally see that thing called the <em>REPL</em>? It's a place where you can try stuff out and also get
-            some documentation if I use a function that you don't understand.</p>
-          <p>Try example to put this in:</p>
-          <pre><code>(doc get)
-          </code></pre>
-          <p>Now you should see the text below:</p>
-          <pre><code>-------------------------
-cljs.core/get
-([o k] [o k not-found])
-Returns the value mapped to key, not-found or nil if key not present.
-          </code></pre>
-          <p>Use it a lot! I know I do :)...</p>
 
         </div>
 
@@ -402,6 +383,21 @@ Returns the value mapped to key, not-found or nil if key not present.
     (.addEventListener (.-body js/document) "keydown" on-key-press)
     (rf/dispatch [:init])
     [screen-view]))
+          </code></pre>
+        </div>
+
+        <div>
+          <p><strong>Troubleshooting</strong></p>
+          <p>If you see this:</p>
+          <pre><code>#error {:message "ERROR", :data {:tag :cljs/analysis-error}, :cause #object[Error Error: Assert failed: Invalid Hiccup form: [nil {:x 10, :y 10} nil]
+(in app > cljs.user.screen_view > cljs.user.game_view)
+(valid-tag? tag)]}
+          </code></pre>
+
+          <p>An easy fix is to add <em>#_</em> as shown below and then remove it.</p>
+          <pre><code>(defn screen-view []
+  #_(let [entity (rf/subscribe [:player])]
+    [game-view entity]))
           </code></pre>
         </div>
 

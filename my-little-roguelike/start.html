@@ -14,7 +14,8 @@
       <div class="playground">
         <strong>Top level forms:</strong>
         <pre><code class="language-klipse">(require '[reagent.core :as r]
-          '[re-frame.core :as rf])
+          '[re-frame.core :as rf]
+          '[goog.events :as events])
         </code></pre>
         <strong>REPL:</strong>
         <pre><code class="language-klipse">
@@ -28,8 +29,8 @@
       (let [on-key-press (fn [e]
                            ;Nothing really happening here
                           )]
-        (.removeEventListener (.-body js/document) "keydown" on-key-press)
-        (.addEventListener (.-body js/document) "keydown" on-key-press)
+        (events/removeAll (.-body js/document) "keydown")
+        (events/listen (.-body js/document) "keydown" on-key-press)
         [screen-view]))
         </code></pre>
       </div>
@@ -325,7 +326,7 @@ Returns the value mapped to key, not-found or nil if key not present.
           <p>I'm aware there's some fiddly issues with events I need to fix. It isn't normally a problem for me,
           but working in this tutorial environment is rather new and I intend to fix is asap!</p>
           <p>Hope you had fun!</p>
-          <p>As an aide, the entire program appears below in full.</p>
+          <p>As an aid, the entire progam appears below in full.</p>
           <pre><code>(rf/reg-event-db
   :init
   (fn [db _]
@@ -379,8 +380,8 @@ Returns the value mapped to key, not-found or nil if key not present.
                               [x y] move]
                           (when (and x y)
                             (rf/dispatch [:move-player x y]))))]
-    (.removeEventListener (.-body js/document) "keydown" on-key-press)
-    (.addEventListener (.-body js/document) "keydown" on-key-press)
+    (events/removeAll (.-body js/document) "keydown")
+    (events/listen (.-body js/document) "keydown" on-key-press)
     (rf/dispatch [:init])
     [screen-view]))
           </code></pre>

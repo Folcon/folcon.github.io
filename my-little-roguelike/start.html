@@ -103,7 +103,7 @@ Returns the value mapped to key, not-found or nil if key not present.
 
           <p>Now see the block of code below? Let's paste that in the bottom of <em>game-view</em></p>
           <pre><code>(let [{:keys [x y glyph type]} entity]
-          [type {:x (+ (* font-scale x) 10) :y (+ (* font-scale y) 10)} glyph])
+          [type {:x (+ (* 10 x) 10) :y (+ (* 10 y) 10)} glyph])
           </code></pre>
 
           <p>It should now look like this:</p>

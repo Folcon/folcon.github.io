@@ -37,10 +37,17 @@
       <div style="overflow-x: scroll; height: 800px; border: 1px solid #e8e8e8; border-radius: 3px">
         <strong>Instructions:</strong>
         <div>
-          <p><strong>Step 0:</strong> Take a look at what's written on the left hand side.</p>
+          <p><strong>Step 0:</strong> Hey! Welcome to <del>My</del>Your Little Roguelike Tutorial!</p>
+          <p>A roguelike is a kind of game where the player traditionally represented by an @ sign wanders around a
+              series of rooms fighting monsters.</p>
+          <p>So why make one? Well doing so can be fun, and unlike many kinds of games, you can have a fully functioning
+              one in a few lessons and if you're anything like me watching something take shape that you've put together
+              is one of life's great joys!</p>
+          <p>So before we get started, let's first quickly go over this environment, as it may be unfamiliar to you.</p>
+          <p>Take a look at what's written on the left hand side.</p>
           <p>It's fairly likely that none of it makes any sense, but that's ok :)...</p>
-          <p>What we're going to do is step by step, build up some basic functionality which will eventually form a roguelike.</p>
-          <p>That you'll eventually be able to take away with you and tinker on your own with!</p>
+          <p>What we're going to do is step by step, build up some basic functionality which will eventually form a roguelike
+              that you'll eventually be able to take away with you and tinker on your own with!</p>
           <p>PS: This isn't a complete language tutorial and isn't trying to be, if that's what you're looking
             for perhaps check out the excellent <a href="http://timothypratley.github.io/power-turtle/">Power Turtle</a>
             for something in a similar style.</p>
@@ -101,7 +108,7 @@ Returns the value mapped to key, not-found or nil if key not present.
           <pre><code>(defn game-view [entity]
           </code></pre>
 
-          <p>Now see the block of code below? Let's paste that in the bottom of <em>game-view</em></p>
+          <p>Now see the block of code below? Let's paste that in the bottom of <em>game-view</em> inside the [:svg]</p>
           <pre><code>(let [{:keys [x y glyph type]} entity]
           [type {:x (+ (* 10 x) 10) :y (+ (* 10 y) 10)} glyph])
           </code></pre>
@@ -118,13 +125,13 @@ Returns the value mapped to key, not-found or nil if key not present.
       [type {:x (+ (* 10 x) 10) :y (+ (* 10 y) 10)} glyph])])
           </code></pre>
 
-          <p>Now the result of all that effort should be something broken! Like the text below:</p>
+          <p>Now the result of all that effort is something broken! Like the text below:</p>
           <pre><code>#error {:message "ERROR", :data {:tag :cljs/analysis-error}, :cause #object[Error Error: Assert failed: Invalid Hiccup form: [nil {:x 10, :y 10} nil]
  (in app > cljs.user.screen_view > cljs.user.game_view)
 (valid-tag? tag)]}
           </code></pre>
 
-          <p>It might not look exactly like that, but I doubt it will work, mostly as we haven't finished!
+          <p>The error might not look exactly like that as we haven't finished!
             We still need to adjust <em>screen-view</em> can you see why? Have a think, it will be useful
           for your future understanding :)...</p>
 

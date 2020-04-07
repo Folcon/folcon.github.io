@@ -155,7 +155,28 @@ npm install
 
 Response
 {app.model.session/signup! {:signup/result "OK"}}
-</code></pre><p>And there we go!</p><h4>PS: CSRF NOTES</h4><p>Security is hard to get right, so please spend some time reading about it, and if you make something serious, have someone (preferably more than one), look over it =)...</p><p>Some starting points:</p><ul><li><a href="https://stackoverflow.com/a/20518324">StackOverflow</a></li><li><a href="http://book.fulcrologic.com/#_csrf">Fulcro Guide CSRF</a></li><li><a href="https://luminusweb.com/docs/security.html#cross_site_request_forgery_protection">Luminus CSRF</a></li></ul>
+</code></pre><p>Similarly login can be sent over websockets by changing this:</p><pre><code>(defn login [{::uism/keys [event-data] :as env}]
+  (-&gt; env
+    (clear)
+    (uism/trigger-remote-mutation :actor/login-form 'app.model.session/login
+      {:username          (:username event-data)
+       :password          (:password event-data)
+       ::m/returning      (uism/actor-class env :actor/current-session)
+       ::uism/ok-event    :event/complete
+       ::uism/error-event :event/failed})
+    (uism/activate :state/checking-session)))
+</code></pre><p>to this:</p><pre><code>(defn login [{::uism/keys [event-data] :as env}]
+  (-&gt; env
+    (clear)
+    (uism/trigger-remote-mutation :actor/login-form 'app.model.session/login
+      {:username          (:username event-data)
+       :password          (:password event-data)
+       ::m/returning      (uism/actor-class env :actor/current-session)
+       ::uism/ok-event    :event/complete
+       ::uism/error-event :event/failed
+       ::uism/mutation-remote :ws-remote})    ; &lt;-- Add the keyword
+    (uism/activate :state/checking-session)))
+</code></pre><p>And there we go!</p><h4>PS: CSRF NOTES</h4><p>Security is hard to get right, so please spend some time reading about it, and if you make something serious, have someone (preferably more than one), look over it =)...</p><p>Some starting points:</p><ul><li><a href="https://stackoverflow.com/a/20518324">StackOverflow</a></li><li><a href="http://book.fulcrologic.com/#_csrf">Fulcro Guide CSRF</a></li><li><a href="https://luminusweb.com/docs/security.html#cross_site_request_forgery_protection">Luminus CSRF</a></li></ul><h4>PPS: An Example!</h4><p>If you're having issues, <a href="https://github.com/Folcon/fulcro-template">I've deployed a currently up-to-date version of the code here</a>. If problems crop up, pay attention to the <code>deps.edn</code> versions, make sure they're up-to-date.</p>
 </div>
 
 <div id="post-tags">

@@ -67,21 +67,21 @@
 </div>
 <div>
     
-    <h3>Whispering to the Elephant</h3><h4>And fixing Database Connection Error</h4><p>You know what's nice? When you're creating a user account and then you restart the server and it <em>stays</em>.</p><p>Let's get us some of that.</p><h4>Step 1 - New deps</h4><p>By now you know the drill, we've got some deps to add, so let's open up <code>deps.edn</code>, and pop this lot in:</p><pre><code>seancorfield/next.jdbc              {:mvn/version "1.0.409"}
+    <h3 id="whispering-to-the-elephant">Whispering to the Elephant</h3><h4 id="and-fixing-database-connection-error">And fixing Database Connection Error</h4><p>You know what's nice? When you're creating a user account and then you restart the server and it <em>stays</em>.</p><p>Let's get us some of that.</p><h4 id="step-1---new-deps">Step 1 - New deps</h4><p>By now you know the drill, we've got some deps to add, so let's open up <code>deps.edn</code>, and pop this lot in:</p><pre><code>seancorfield/next.jdbc              {:mvn/version "1.0.409"}
 honeysql                            {:mvn/version "0.9.10"}
 nilenso/honeysql-postgres           {:mvn/version "0.2.6"}
 org.postgresql/postgresql           {:mvn/version "42.2.12"}
 hikari-cp                           {:mvn/version "2.11.0"}
 buddy/buddy-sign                    {:mvn/version "3.1.0"}
 buddy/buddy-hashers                 {:mvn/version "1.4.0"}
-</code></pre><h4>Step 2 - Migrations and Structure</h4><p>Now we want to create a migration, let's call it <code>migrations/v1__create-user-table.sql</code>:</p><pre><code>CREATE TABLE account (
+</code></pre><h4 id="step-2---migrations-and-structure">Step 2 - Migrations and Structure</h4><p>Now we want to create a migration, let's call it <code>migrations/v1__create-user-table.sql</code>:</p><pre><code>CREATE TABLE account (
      id SERIAL PRIMARY KEY,
      email    text NOT NULL UNIQUE,
      password text NOT NULL,
      created_at timestamp with time zone DEFAULT now() NOT NULL,
      updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-</code></pre><h4>Step 3 - Wrapping the database connections</h4><p>Now we need to have some layer to talk to our db:</p><pre><code>(ns app.model.database
+</code></pre><h4 id="step-3---wrapping-the-database-connections">Step 3 - Wrapping the database connections</h4><p>Now we need to have some layer to talk to our db:</p><pre><code>(ns app.model.database
   (:require [app.server-components.config :refer [config]]
             [mount.core :refer [defstate]]
             [hikari-cp.core :as pool]
@@ -130,7 +130,7 @@ buddy/buddy-hashers                 {:mvn/version "1.4.0"}
   (jdbc/execute-one! conn
     (sql/format sql-map :quoting :ansi)
     query-opts))
-</code></pre><h4>Step 4 - Querying</h4><p>So pathom, our graphql-like query parser needs to know about Postgres, so in <code>app.server-components.pathom</code>:</p><pre><code>(ns app.server-components.pathom
+</code></pre><h4 id="step-4---querying">Step 4 - Querying</h4><p>So pathom, our graphql-like query parser needs to know about Postgres, so in <code>app.server-components.pathom</code>:</p><pre><code>(ns app.server-components.pathom
   (:require
     [mount.core :refer [defstate]]
     ...
@@ -142,7 +142,7 @@ buddy/buddy-hashers                 {:mvn/version "1.4.0"}
   ::pgdb/pool pgdb/pool ; &lt;-- We add this
   :db @db-connection
   ...)
-</code></pre><h4>Step 5 - Mutations</h4><p>Now let's adjust our <code>app.model.session</code>:</p><pre><code>(ns app.model.session
+</code></pre><h4 id="step-5---mutations">Step 5 - Mutations</h4><p>Now let's adjust our <code>app.model.session</code>:</p><pre><code>(ns app.model.session
   (:require
 ;;  [app.model.mock-database :as db]  ; &lt;-- DELETE
     [app.model.database :as db]       ; &lt;-- INSERT
@@ -196,7 +196,7 @@ buddy/buddy-hashers                 {:mvn/version "1.4.0"}
                                 :password hashed-password}]
                       :returning [:id]})
   {:signup/result "OK"}))
-</code></pre><h4>Step 6 - Config and Env vars</h4><p>Finally let's adjust our <code>src/main/config/dev.edn</code>:</p><pre><code>{:taoensso.timbre/logging-config {:level :debug}
+</code></pre><h4 id="step-6---config-and-env-vars">Step 6 - Config and Env vars</h4><p>Finally let's adjust our <code>src/main/config/dev.edn</code>:</p><pre><code>{:taoensso.timbre/logging-config {:level :debug}
  :database-spec {:username      "postgres"
                  :password      "password"
                  :server-name   "localhost"
@@ -211,7 +211,7 @@ buddy/buddy-hashers                 {:mvn/version "1.4.0"}
                 :port-number   :env.edn/POSTGRES_PORT
                 :database-name :env/POSTGRES_DB
                 :sslmode       :env/POSTGRES_SSLMODE}}
-</code></pre><h4>PS: An Updated Example!</h4><p>If you're having issues, <a href="https://github.com/Folcon/fulcro-template/tree/edb1c099825983fe38bbe29293c51a3880db8ddc">I've updated my currently up-to-date version of the code here</a>.</p><h4>Acknowledgements</h4><p>Thanks to <a href="https://chrisodonnell.dev/posts/giftlist/backend_persistence/">Christopher O'Donnell for blog post series</a>.</p>
+</code></pre><hr /><h4 id="ps-an-updated-example">PS: An Updated Example!</h4><p>If you're having issues, <a href="https://github.com/Folcon/fulcro-template/tree/edb1c099825983fe38bbe29293c51a3880db8ddc">I've updated my currently up-to-date version of the code here</a>.</p><h4 id="acknowledgements">Acknowledgements</h4><p>Thanks to <a href="https://chrisodonnell.dev/posts/giftlist/backend_persistence/">Christopher O'Donnell for blog post series</a>.</p>
 </div>
 
 <div id="post-tags">

@@ -60,7 +60,7 @@
 </div>
 <div>
     
-    <h3>Getting a working build</h3><h4>With minimal hair on fire</h4><p>So you've got a Fulcro site and you want to show it to the world! So you go to <a href="https://www.heroku.com/">www.heroku.com</a>, and why wouldn't you? They really help to make things nice, straightforward and easy.</p><p>You might want to have a read of some pitfalls.</p><h2>Step 1 - deps deps deps</h2><p>So you push your code to heroku's friendly git repo and watch the build log, 💥.</p><p>What happened?</p><p><code>deps.edn</code> did!</p><p>Heroku's really focused on leiningen being the way you build stuff, I mean really focused! If you don't have a file called <code>project.clj</code> its clojure build process just falls over. <em>(This may be fixed by the time you read this, or not...)</em> 🤷</p><p>So let's create one:</p><pre><code>touch project.clj
+    <h3 id="getting-a-working-build">Getting a working build</h3><h4 id="with-minimal-hair-on-fire">With minimal hair on fire</h4><p>So you've got a Fulcro site and you want to show it to the world! So you go to <a href="https://www.heroku.com/">www.heroku.com</a>, and why wouldn't you? They really help to make things nice, straightforward and easy.</p><p>You might want to have a read of some pitfalls.</p><h2 id="step-1---deps-deps-deps">Step 1 - deps deps deps</h2><p>So you push your code to heroku's friendly git repo and watch the build log, 💥.</p><p>What happened?</p><p><code>deps.edn</code> did!</p><p>Heroku's really focused on leiningen being the way you build stuff, I mean really focused! If you don't have a file called <code>project.clj</code> its clojure build process just falls over. <em>(This may be fixed by the time you read this, or not...)</em> 🤷</p><p>So let's create one:</p><pre><code>touch project.clj
 </code></pre><p>That's right, it doesn't even need to have anything in it, it just has to exist...</p><p>Now obviously that's not going to be enough, so let's take your <code>deps.edn</code> file and adjust it:</p><pre><code>{:paths   ["src/main" "resources"]
 
  :deps    {...}
@@ -92,7 +92,7 @@ $ heroku buildpacks:add heroku/clojure
 === &lt;your machine name&gt; Buildpack URLs
 1. heroku/nodejs
 2. heroku/clojure
-</code></pre><h2>Step 2 - Talking to Postgres</h2><p>First let's adjust our <code>config/prod.edn</code>:</p><pre><code>{...
+</code></pre><h2 id="step-2---talking-to-postgres">Step 2 - Talking to Postgres</h2><p>First let's adjust our <code>config/prod.edn</code>:</p><pre><code>{...
 
  :org.httpkit.server/config {:port :env.edn/PORT}  ;; &lt;-- Grab the port from heroku
  ...
@@ -148,14 +148,14 @@ $ heroku buildpacks:add heroku/clojure
 (defstate pool
   :start (pool/make-datasource (datasource-options))
   :stop (pool/close-datasource pool))
-</code></pre><h2>Step 3 - Something to Run</h2><p>Now we just need a <code>Procfile</code>:</p><pre><code>web: java -cp fulcro.jar clojure.main -m app.server-main
-</code></pre><h1>PS: If you're getting:</h1><h2>Problem 1 - Connection Refused during deploy</h2><pre><code>[web.1]: Execution error (ConnectException) at java.net.PlainSocketImpl/socketConnect (PlainSocketImpl.java:-2).
+</code></pre><h2 id="step-3---something-to-run">Step 3 - Something to Run</h2><p>Now we just need a <code>Procfile</code>:</p><pre><code>web: java -cp fulcro.jar clojure.main -m app.server-main
+</code></pre><h1 id="ps-if-youre-getting">PS: If you're getting:</h1><h2 id="problem-1---connection-refused-during-deploy">Problem 1 - Connection Refused during deploy</h2><pre><code>[web.1]: Execution error (ConnectException) at java.net.PlainSocketImpl/socketConnect (PlainSocketImpl.java:-2).
 [web.1]: Connection refused (Connection refused)
 </code></pre><p>Then you many not be passing in <code>src/main/config/prod.edn</code>:</p><pre><code>:sslmode "require"
-</code></pre><h2>Problem 2 - Just 404 everywhere!</h2><p>You can't see anything and when you try and access your javascript files, they're 404ing. You may need to also wrap-files in <code>src/main/config/default.edn</code>.</p><pre><code>:static    {:resources "public"
+</code></pre><h2 id="problem-2---just-404-everywhere">Problem 2 - Just 404 everywhere!</h2><p>You can't see anything and when you try and access your javascript files, they're 404ing. You may need to also wrap-files in <code>src/main/config/default.edn</code>.</p><pre><code>:static    {:resources "public"
             :files     "resources/public"} ; &lt;-- Add this!
-</code></pre><h2>Problem 3 - &lt;CORS?&gt;</h2><p>You may have forgotten to add heroku to your list of legal origins in <code>src/main/config/prod.edn</code>:</p><pre><code>:legal-origins #{"&lt;some pretty heroku name&gt;.herokuapp.com" "localhost"}
-</code></pre><h4>PPS: An Updated Example!</h4><p>If you're having issues, <a href="https://github.com/Folcon/fulcro-template">I've updated my currently up-to-date version of the code here</a>.</p><h4>Acknowledgements</h4><p>Thanks to <a href="https://www.gertgoet.com/2019/02/06/deploying-a-tools-deps-clojure-project-to-heroku.html">Gert Goet for his enlightening blog post</a>
+</code></pre><h2 id="problem-3---cors">Problem 3 - &lt;CORS?&gt;</h2><p>You may have forgotten to add heroku to your list of legal origins in <code>src/main/config/prod.edn</code>:</p><pre><code>:legal-origins #{"&lt;some pretty heroku name&gt;.herokuapp.com" "localhost"}
+</code></pre><hr /><h4 id="pps-an-updated-example">PPS: An Updated Example!</h4><p>If you're having issues, <a href="https://github.com/Folcon/fulcro-template">I've updated my currently up-to-date version of the code here</a>.</p><h4 id="acknowledgements">Acknowledgements</h4><p>Thanks to <a href="https://www.gertgoet.com/2019/02/06/deploying-a-tools-deps-clojure-project-to-heroku.html">Gert Goet for his enlightening blog post</a>
 And the friendly folks in the #fulcro slack!</p>
 </div>
 

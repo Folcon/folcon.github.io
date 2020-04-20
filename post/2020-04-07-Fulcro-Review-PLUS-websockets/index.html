@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Alien Brain: A Fulcro Review + Websockets!</title>
+    
+<meta name="keywords" content="release,delaunator-cljc,sessions,postgres,beginner,heroku,getting-unstuck,reflection,fulcro,websockets,performance">
+
+<meta name="description" content="Fulcro?A breath of fresh air">
+
+<meta property="og:description" content="Fulcro?A breath of fresh air">
+
+<meta property="og:url" content="//folcon.github.io/post/2020-04-07-Fulcro-Review-PLUS-websockets/" />
+<meta property="og:title" content="A Fulcro Review + Websockets!" />
+<meta property="og:type" content="article" />
+
+    <link rel="canonical" href="//folcon.github.io/post/2020-04-07-Fulcro-Review-PLUS-websockets/">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="//fonts.googleapis.com/css?family=Alegreya:400italic,700italic,400,700" rel="stylesheet"
+          type="text/css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css">
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/styles/default.min.css">
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+
+
+<nav class="navbar navbar-default">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alien Brain</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav navbar-right">
+                <li ><a href="/">Home</a></li>
+                <li
+                ><a href="/archives/">Archives</a></li>
+                
+                <li><a href="/feed.xml">RSS</a></li>
+            </ul>
+        </div><!--/.nav-collapse -->
+    </div><!--/.container-fluid -->
+</nav>
+
+
+<div class="container">
+
+
+    <div class="row">
+        <div class="col-lg-9">
+            <div id="content">
+                
+<div id="post">
+    <div class="post-header">
+    <div id="post-meta" class="row">
+        <div class="col-lg-6">7 April 2020</div>
+        
+    </div>
+    <h2>A Fulcro Review + Websockets!</h2>
+</div>
+<div>
+    
+    <h3 id="fulcro">Fulcro?</h3><h4 id="a-breath-of-fresh-air">A breath of fresh air</h4><p><a href="http://fulcro.fulcrologic.com/">Fulcro</a> has gotten way better, it's probably the closest thing I've seen (other than <a href="https://luminusweb.com/">Luminus</a>) to providing a cohesive batteries-included clojure web offering.</p><p>That isn't a slight against Luminus in the slightest, it's a solid offering providing exactly what you need to serve webpages or an api, however if you've been enviously staring <a href="https://www.phoenixframework.org/">Phoenix's</a> web offering wanting simple access to websockets and not knowing where to start Luminus isn't going to go out of its way to help you.</p><p>Beginners have very much had to walk their own path, not that the path is too challenging, but every extra hurdle you add to people getting started can seem an insurmountable barrier.</p><p>Fulcro isn't perfect, there are some things I'm not happy with, their stance against hiccup for one, but honestly, at this point, it's a quibble.</p><p>And the most significant thing? <a href="http://book.fulcrologic.com/">It has a Guide!</a> Tony Kay has clearly spent an enormous amount of time creating cohesive and easy to understand docs, there's even a great <a href="http://book.fulcrologic.com/#_getting_started">getting started section</a> that shows you how an application is built from the ground up, I'm impressed.</p><p>The best part about all of this? Both Fulcro and Luminus are strongly plugged into clojure's philosophy about things being libraries, so as your application grows and you want to adjust its functionality, you can, in fact, mix and match the bits you like from both, they're pretty cross-compatible.</p><h4 id="the-websockets-bit">The Websockets bit!</h4><p>So, what's this about websockets? I did mention that as a pretty big gain versus Luminus, but turning them on isn't <a href="https://github.com/fulcrologic/fulcro-websockets#usage">quite documented as well as I'd like</a>, specifically the examples are currently for immutant, but the <a href="https://github.com/fulcrologic/fulcro-template">fulcro template</a> gives you http-kit. I expect this is a temporary oversight, but for the moment here's what you need do to.</p><p>Starting at the template:</p><pre><code>git clone --depth 1 -o fulcro-template https://github.com/fulcrologic/fulcro-template.git fulcro-app
+cd fulcro-app
+npm install
+</code></pre><p><a href="https://clojars.org/com.fulcrologic/fulcro-websockets">Import them</a>:</p><p>So in <code>deps.edn</code>:</p><pre><code>com.fulcrologic/fulcro-websockets   {:mvn/version "3.1.1"}
+</code></pre><p>Create an <code>app.server-components.websockets</code> ns:</p><pre><code>(ns app.server-components.websockets
+  (:require [mount.core :refer [defstate]]
+            [com.fulcrologic.fulcro.networking.websockets :as fws]
+            [taoensso.sente.server-adapters.http-kit :refer [get-sch-adapter]]
+            [app.server-components.pathom :refer [parser]]))
+
+
+(defstate websockets
+  :start
+  (fws/start! (fws/make-websockets
+                parser
+                {:http-server-adapter (get-sch-adapter)
+                 :parser-accepts-env? true
+                 ;; I'm not going to cover how to handle CSRF well, if this is a toy project
+                 ;;  this bit doesn't matter as much, if it isn't please sit down and read about it.
+                 ;;  I've added some notes at the end.
+                 :sente-options       {:csrf-token-fn nil}}))
+  :stop
+  (fws/stop! websockets))
+
+(defn wrap-websockets [handler]
+  (fws/wrap-api handler websockets))
+</code></pre><p>Edit <code>app.server-components.middleware</code> and add an entry in middleware for <code>wrap-websockets</code>:</p><pre><code>(ns app.server-components.middleware
+  (:require [mount.core :refer [defstate]]
+            [com.fulcrologic.fulcro.server.api-middleware :refer [handle-api-request
+                                                                  wrap-transit-params
+                                                                  wrap-transit-response]]
+            [ring.middleware.defaults :refer [wrap-defaults]]
+            [ring.middleware.gzip :refer [wrap-gzip]]
+            [ring.util.response :refer [response file-response resource-response]]
+            [ring.util.response :as resp]
+            [hiccup.page :refer [html5]]
+            [taoensso.timbre :as log]
+            [app.server-components.config :refer [config]]
+            [app.server-components.pathom :refer [parser]]
+            [app.server-components.websockets :refer [wrap-websockets]])) ; &lt;--- ADDED AT THE END
+
+...
+
+
+(defstate middleware
+  :start
+  (let [defaults-config (:ring.middleware/defaults-config config)
+        legal-origins   (get config :legal-origins #{"localhost"})]
+    (-&gt; not-found-handler
+      (wrap-api "/api")
+      (wrap-websockets) ; &lt;--- STICK THIS IN
+      wrap-transit-params
+      wrap-transit-response
+      (wrap-html-routes)
+      ;; If you want to set something like session store, you'd do it against
+      ;; the defaults-config here (which comes from an EDN file, so it can't have
+      ;; code initialized).
+      ;; E.g. (wrap-defaults (assoc-in defaults-config [:session :store] (my-store)))
+      (wrap-defaults defaults-config)
+      wrap-gzip)))
+</code></pre><p>Edit <code>app.application</code>'s definition of <code>SPA</code>:</p><pre><code>(defonce SPA (app/fulcro-app
+               {;; This ensures your client can talk to a CSRF-protected server.
+                ;; See middleware.clj to see how the token is embedded into the HTML
+                :remotes {:remote (net/fulcro-http-remote
+                                    {:url                "/api"
+                                     :request-middleware secured-request-middleware})
+                          :ws-remote (fws/fulcro-websocket-remote {})}}))
+
+</code></pre><p>That's the basics! Now, how do we use them?</p><p>Let's take a look at <code>signup!</code> in <code>app.model.session</code>:</p><pre><code>(defmutation signup! [_]
+  (action [{:keys [state]}]
+    (log/info "Marking complete")
+    (swap! state fs/mark-complete* signup-ident))
+  (ok-action [{:keys [app state]}]
+    (dr/change-route app ["signup-success"]))
+  (remote [{:keys [state] :as env}]
+    (let [{:account/keys [email password password-again]} (get-in @state signup-ident)]
+      (boolean (and (valid-email? email) (valid-password? password)
+                 (= password password-again))))))
+</code></pre><p>That <code>remote</code> call is basically using the remote referenced in <code>[:remotes :remote]</code> so sending the request to the <code>/api</code> http endpoint, so if we want to send it over the websocket instead?</p><pre><code>(defmutation signup! [_]
+  (action [{:keys [state]}]
+    (log/info "Marking complete")
+    (swap! state fs/mark-complete* signup-ident))
+  (ok-action [{:keys [app state]}]
+    (dr/change-route app ["signup-success"]))
+  (ws-remote [{:keys [state] :as env}]    ; &lt;-- Just change it to match the keyword
+    (let [{:account/keys [email password password-again]} (get-in @state signup-ident)]
+      (boolean (and (valid-email? email) (valid-password? password)
+                 (= password password-again))))))
+</code></pre><p>Now I sign up with <code>test@example.com</code>/<code>testtest</code> and check out the chrome Network panel:</p><pre><code>↑+[["~:fulcro.client/API",[["~#list",["~$app.model.session/signup!",["^ ","~:email","test@example.com","~:password","testtest"]]]]],"575c78"]
+↓+[["^ ","~:status",200,"~:body",["^ ","~$app.model.session/signup!",["^ ","~:signup/result","OK"],"~:com.wsscode.pathom/trace",["^ ","~:start",5141,"~:path",[],"~:duration",129,"~...
+</code></pre><p>We can see the websocket messages travelling, if you have <code>Fulcro Inspect</code> installed, under it's Network tab we can see:</p><pre><code>Request
+[(app.model.session/signup! {:email "test@example.com", :password "testtest"})]
+
+Response
+{app.model.session/signup! {:signup/result "OK"}}
+</code></pre><p>Similarly login can be sent over websockets by changing this:</p><pre><code>(defn login [{::uism/keys [event-data] :as env}]
+  (-&gt; env
+    (clear)
+    (uism/trigger-remote-mutation :actor/login-form 'app.model.session/login
+      {:username          (:username event-data)
+       :password          (:password event-data)
+       ::m/returning      (uism/actor-class env :actor/current-session)
+       ::uism/ok-event    :event/complete
+       ::uism/error-event :event/failed})
+    (uism/activate :state/checking-session)))
+</code></pre><p>to this:</p><pre><code>(defn login [{::uism/keys [event-data] :as env}]
+  (-&gt; env
+    (clear)
+    (uism/trigger-remote-mutation :actor/login-form 'app.model.session/login
+      {:username          (:username event-data)
+       :password          (:password event-data)
+       ::m/returning      (uism/actor-class env :actor/current-session)
+       ::uism/ok-event    :event/complete
+       ::uism/error-event :event/failed
+       ::uism/mutation-remote :ws-remote})    ; &lt;-- Add the keyword
+    (uism/activate :state/checking-session)))
+</code></pre><p>And there we go!</p><hr /><h3 id="ps-csrf-notes">PS: CSRF NOTES</h3><p>Security is hard to get right, so please spend some time reading about it, and if you make something serious, have someone (preferably more than one), look over it =)...</p><p>Some starting points:</p><ul><li><a href="https://stackoverflow.com/a/20518324">StackOverflow</a></li><li><a href="http://book.fulcrologic.com/#_csrf">Fulcro Guide CSRF</a></li><li><a href="https://luminusweb.com/docs/security.html#cross_site_request_forgery_protection">Luminus CSRF</a></li></ul><h3 id="pps-an-example">PPS: An Example!</h3><p>If you're having issues, <a href="https://github.com/Folcon/fulcro-template/tree/fulcro-review">I've deployed a currently up-to-date version of the code here</a>. If problems crop up, pay attention to the <code>deps.edn</code> versions, make sure they're up-to-date.</p>
+</div>
+
+<div id="post-tags">
+    <b>Tags: </b>
+    
+    <a href="/tag/beginner/">beginner</a>
+    
+    <a href="/tag/fulcro/">fulcro</a>
+    
+    <a href="/tag/websockets/">websockets</a>
+    
+</div>
+
+
+    <div id="prev-next">
+        
+        <a href="/post/2020-04-10-Fulcro-and-Postgres/">&laquo; Fulcro and Postgres</a>
+        
+        
+        <a class="right" href="/post/2020-03-07-asking-a-question/">Asking a question to help you figure out the answer &raquo;</a>
+        
+    </div>
+
+    
+
+
+</div>
+
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div id="sidebar">
+                <h3>Links</h3>
+                <ul id="links">
+                    <li><a href="https://pinboard.in/u:folcon">Pinboard</a></li>
+                    <li><a href="https://folcon.github.io/my-little-roguelike/start.html">My Little Roguelike</a></li>
+                    
+                </ul>
+                
+                <div id="recent">
+                    <h3>Recent Posts</h3>
+                    <ul>
+                        
+                        <li><a href="/post/2020-04-20-Shared-Websocket-Sessions-with-Fulcro/">Shared Websocket Sessions with Fulcro</a></li>
+                        
+                        <li><a href="/post/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy</a></li>
+                        
+                        <li><a href="/post/2020-04-10-Fulcro-and-Postgres/">Fulcro and Postgres</a></li>
+                        
+                    </ul>
+                </div>
+                
+                
+                <div id="tags">
+                    <h3>Tags</h3>
+                    <ul>
+                        
+                        <li><a href="/tag/release/">release</a></li>
+                        
+                        <li><a href="/tag/delaunator-cljc/">delaunator-cljc</a></li>
+                        
+                        <li><a href="/tag/sessions/">sessions</a></li>
+                        
+                        <li><a href="/tag/postgres/">postgres</a></li>
+                        
+                        <li><a href="/tag/beginner/">beginner</a></li>
+                        
+                        <li><a href="/tag/heroku/">heroku</a></li>
+                        
+                        <li><a href="/tag/getting-unstuck/">getting-unstuck</a></li>
+                        
+                        <li><a href="/tag/reflection/">reflection</a></li>
+                        
+                        <li><a href="/tag/fulcro/">fulcro</a></li>
+                        
+                        <li><a href="/tag/websockets/">websockets</a></li>
+                        
+                        <li><a href="/tag/performance/">performance</a></li>
+                        
+                    </ul>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    <footer>Copyright &copy; 2020 Folcon
+        <p style="text-align: center;">Powered by <a href="http://cryogenweb.org">Cryogen</a></p></footer>
+</div>
+<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+<script src="/js/highlight.pack.js" type="text/javascript"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+
+</body>
+</html>

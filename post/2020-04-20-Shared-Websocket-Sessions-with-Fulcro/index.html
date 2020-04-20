@@ -2,12 +2,19 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
     <meta charset="utf-8"/>
-    <title>Alien Brain: Archives</title>
+    <title>Alien Brain: Shared Websocket Sessions with Fulcro</title>
     
-    <meta name="description" content="Musings">
-    <meta name="keywords" content="">
-    
-    <link rel="canonical" href="//folcon.github.io/archives/">
+<meta name="keywords" content="release,delaunator-cljc,sessions,postgres,beginner,heroku,getting-unstuck,reflection,fulcro,websockets,performance">
+
+<meta name="description" content="Why doesn&#39;t my server remember who I am?I&#39;m only using a different transport!">
+
+<meta property="og:description" content="Why doesn&#39;t my server remember who I am?I&#39;m only using a different transport!">
+
+<meta property="og:url" content="//folcon.github.io/post/2020-04-20-Shared-Websocket-Sessions-with-Fulcro/" />
+<meta property="og:title" content="Shared Websocket Sessions with Fulcro" />
+<meta property="og:type" content="article" />
+
+    <link rel="canonical" href="//folcon.github.io/post/2020-04-20-Shared-Websocket-Sessions-with-Fulcro/">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="//fonts.googleapis.com/css?family=Alegreya:400italic,700italic,400,700" rel="stylesheet"
           type="text/css">
@@ -34,7 +41,7 @@
             <ul class="nav navbar-nav navbar-right">
                 <li ><a href="/">Home</a></li>
                 <li
-                 class="active" ><a href="/archives/">Archives</a></li>
+                ><a href="/archives/">Archives</a></li>
                 
                 <li><a href="/feed.xml">RSS</a></li>
             </ul>
@@ -50,54 +57,80 @@
         <div class="col-lg-9">
             <div id="content">
                 
-<div id="posts">
-    <div id="page-header">
-        <h2>Archives</h2>
+<div id="post">
+    <div class="post-header">
+    <div id="post-meta" class="row">
+        <div class="col-lg-6">20 April 2020</div>
+        
     </div>
+    <h2>Shared Websocket Sessions with Fulcro</h2>
+</div>
+<div>
     
-        <h4>2020 April</h4>
-        <ul>
-        
-        <li>
-            Apr 20 - <a href="/post/2020-04-20-Shared-Websocket-Sessions-with-Fulcro/">Shared Websocket Sessions with Fulcro</a>
-        </li>
-        
-        <li>
-            Apr 12 - <a href="/post/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy</a>
-        </li>
-        
-        <li>
-            Apr 10 - <a href="/post/2020-04-10-Fulcro-and-Postgres/">Fulcro and Postgres</a>
-        </li>
-        
-        <li>
-            Apr 07 - <a href="/post/2020-04-07-Fulcro-Review-PLUS-websockets/">A Fulcro Review + Websockets!</a>
-        </li>
-        
-        </ul>
+    <h3 id="why-doesnt-my-server-remember-who-i-am">Why doesn't my server remember who I am?</h3><h4 id="im-only-using-a-different-transport">I'm only using a different transport!</h4><p>So I was expecting this to work out of the box, or at the very least be documented, but I couldn't find anything regarding it, so I figured best to do it myself =)...</p><p>It's thankfully not that complicated, just add to the default template a new namespace <code>src/main/app/server_components/session.clj</code>:</p><pre><code>(ns app.server-components.session
+  (:require [mount.core :refer [defstate]]
+            [ring.middleware.session.store :as store]
+            [ring.middleware.session.memory :refer [memory-store]]))
+
+
+(defstate mem-store
+  :start (memory-store))
+
+(defn ws-lookup [key]
+  (store/read-session mem-store key))
+
+(defn get-session [env]
+  (condp #(get-in %2 %1) env
+    [:request :session/key]  ;; websockets path
+    (some-&gt; env :request :session/key ws-lookup)
+    [:ring/request]          ;; http path
+    (some-&gt; env :ring/request :session)
+    nil))
+</code></pre><p>This is basically going to be our shared session store, obviously you can persist this store if you want, but for simplicity we'll just use the default memory one.</p><p>Now we need to adjust our middleware file <code>src/main/app/server_components/middleware.clj</code>:</p><pre><code>(ns app.server-components.middleware
+  (:require
+    ...
+    [app.server-components.session :refer [mem-store]]  ;; &lt;-- Now stick the new ns we made into it
+    ...))
+
+...
+
+(defstate middleware
+  :start
+  (let [defaults-config (:ring.middleware/defaults-config config)
+        legal-origins   (get config :legal-origins #{"localhost"})]
+    (-&gt; not-found-handler
+      ...
+      (wrap-defaults (assoc-in defaults-config [:session :store] mem-store))  ;; &lt;-- Adjust this to take our new session store
+      wrap-gzip)))
+</code></pre><p>Finally, and this part is important, we need to change our <code>src/main/config/defaults.edn</code>:</p><pre><code>:static    {}
+:session   {}  ;; &lt;-- this is set to true in the template
+:security  {}
+</code></pre><p>And we're done! Not much right? But now you can take <a href="https://github.com/Folcon/fulcro-template/tree/20fdb57adb904823bd4500a5c2ebcd921d0dee62">the example template here</a>, which is just a fork of the <a href="https://github.com/fulcrologic/fulcro-template">official fulcro template</a> and have working sessions if you use a <code>ws-remote</code> =)...</p><p>You can use the master version of my fork, but it may have other stuff in there you don't want...</p>
+</div>
+
+<div id="post-tags">
+    <b>Tags: </b>
     
-        <h4>2020 March</h4>
-        <ul>
-        
-        <li>
-            Mar 07 - <a href="/post/2020-03-07-asking-a-question/">Asking a question to help you figure out the answer</a>
-        </li>
-        
-        </ul>
+    <a href="/tag/sessions/">sessions</a>
     
-        <h4>2019 December</h4>
-        <ul>
-        
-        <li>
-            Dec 30 - <a href="/post/2019-12-30-playing-with-performance/">Playing with Performance</a>
-        </li>
-        
-        <li>
-            Dec 28 - <a href="/post/2019-12-28-first-post/">A New Release</a>
-        </li>
-        
-        </ul>
+    <a href="/tag/beginner/">beginner</a>
     
+    <a href="/tag/fulcro/">fulcro</a>
+    
+    <a href="/tag/websockets/">websockets</a>
+    
+</div>
+
+
+    <div id="prev-next">
+        
+        
+        <a class="right" href="/post/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy &raquo;</a>
+        
+    </div>
+
+    
+
 
 </div>
 

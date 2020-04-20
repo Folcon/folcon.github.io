@@ -53,129 +53,64 @@
 <div id="post">
     <div class="post-header">
     <div id="post-meta" class="row">
-        <div class="col-lg-6">12 April 2020</div>
+        <div class="col-lg-6">20 April 2020</div>
         
     </div>
-    <h2>Fulcro on Heroku - Time to deploy</h2>
+    <h2>Shared Websocket Sessions with Fulcro</h2>
 </div>
 <div>
     
-    <h3 id="getting-a-working-build">Getting a working build</h3><h4 id="with-minimal-hair-on-fire">With minimal hair on fire</h4><p>So you've got a Fulcro site and you want to show it to the world! So you go to <a href="https://www.heroku.com/">www.heroku.com</a>, and why wouldn't you? They really help to make things nice, straightforward and easy.</p><p>You might want to have a read of some pitfalls.</p><h2 id="step-1---deps-deps-deps">Step 1 - deps deps deps</h2><p>So you push your code to heroku's friendly git repo and watch the build log, 💥.</p><p>What happened?</p><p><code>deps.edn</code> did!</p><p>Heroku's really focused on leiningen being the way you build stuff, I mean really focused! If you don't have a file called <code>project.clj</code> its clojure build process just falls over. <em>(This may be fixed by the time you read this, or not...)</em> 🤷</p><p>So let's create one:</p><pre><code>touch project.clj
-</code></pre><p>That's right, it doesn't even need to have anything in it, it just has to exist...</p><p>Now obviously that's not going to be enough, so let's take your <code>deps.edn</code> file and adjust it:</p><pre><code>{:paths   ["src/main" "resources"]
+    <h3 id="why-doesnt-my-server-remember-who-i-am">Why doesn't my server remember who I am?</h3><h4 id="im-only-using-a-different-transport">I'm only using a different transport!</h4><p>So I was expecting this to work out of the box, or at the very least be documented, but I couldn't find anything regarding it, so I figured best to do it myself =)...</p><p>It's thankfully not that complicated, just add to the default template a new namespace <code>src/main/app/server_components/session.clj</code>:</p><pre><code>(ns app.server-components.session
+  (:require [mount.core :refer [defstate]]
+            [ring.middleware.session.store :as store]
+            [ring.middleware.session.memory :refer [memory-store]]))
 
- :deps    {...}
 
- :aliases {:clj-tests {:extra-paths ["src/test"]
-           ...
-            ;; v-- Add this!
-           :depstar {:extra-deps {seancorfield/depstar {:mvn/version "0.5.2"}}}}}
-</code></pre><p>and your <code>shadow-cljs.edn</code> file:</p><pre><code>{:deps   {:aliases [:dev]}
- :nrepl  {:port 9000}
- :builds {:main       {:target  :browser
-                       ...
-                       ;; v-- and this!
-                       :release {:compiler-options {:optimizations :advanced}}}
+(defstate mem-store
+  :start (memory-store))
 
-          :test       {...}
+(defn ws-lookup [key]
+  (store/read-session mem-store key))
 
-          :ci-tests   {...}
+(defn get-session [env]
+  (condp #(get-in %2 %1) env
+    [:request :session/key]  ;; websockets path
+    (some-&gt; env :request :session/key ws-lookup)
+    [:ring/request]          ;; http path
+    (some-&gt; env :ring/request :session)
+    nil))
+</code></pre><p>This is basically going to be our shared session store, obviously you can persist this store if you want, but for simplicity we'll just use the default memory one.</p><p>Now we need to adjust our middleware file <code>src/main/app/server_components/middleware.clj</code>:</p><pre><code>(ns app.server-components.middleware
+  (:require
+    ...
+    [app.server-components.session :refer [mem-store]]  ;; &lt;-- Now stick the new ns we made into it
+    ...))
 
-          :workspaces {...}
-</code></pre><p>Next, we need to add a <code>bin/build</code> file, we're doing this because the presence of such a file will make heroku use that for our build.</p><pre><code>#!/usr/bin/env bash
-npm install
-npx shadow-cljs release main
-clojure -A:depstar -m hf.depstar.uberjar fulcro.jar
-</code></pre><p>Don't forget to <code>chmod u+x bin/build</code>!</p><p>Finally, we need to add some buildpacks!</p><pre><code>$ heroku buildpacks:clear
-$ heroku buildpacks:add heroku/nodejs
-$ heroku buildpacks:add heroku/clojure
-</code></pre><p>When you're done they should look like this:</p><pre><code>$ heroku buildpacks
-=== &lt;your machine name&gt; Buildpack URLs
-1. heroku/nodejs
-2. heroku/clojure
-</code></pre><h2 id="step-2---talking-to-postgres">Step 2 - Talking to Postgres</h2><p>First let's adjust our <code>config/prod.edn</code>:</p><pre><code>{...
+...
 
- :org.httpkit.server/config {:port :env.edn/PORT}  ;; &lt;-- Grab the port from heroku
- ...
- :database-spec {:jdbc-url :env/DATABASE_URL}}  ;; &lt;-- Grab the DATABASE_URL as well
-</code></pre><p>We'll need to make some adjustments to our postgres connection to parse heroku's <code>DATABASE_URL</code>, stick this in <code>app.model.database</code>:</p><pre><code>(defn create-uri [url] (URI. url))
-
-(defn parse-username-and-password [db-uri]
-  (str/split (.getUserInfo db-uri) #":"))
-
-(defn parse-db-name [db-uri]
-  (str/replace (.getPath db-uri) "/" ""))
-
-(defn parse-host [db-uri]
-  (.getHost db-uri))
-
-(defn parse-port [db-uri]
-  (.getPort db-uri))
-
-(defn hikari-connection-map
-  "Converts Heroku's DATABASE_URL to a map that you can pass to hikari"
-  [heroku-database-url]
-  (let [db-uri (create-uri heroku-database-url)
-        host    (parse-host db-uri)
-        port    (parse-port db-uri)
-        db-name (parse-db-name db-uri)
-        [username password] (parse-username-and-password db-uri)]
-    {:username      username
-     :password      password
-     :server-name   host
-     :port-number   port
-     :database-name db-name
-     :sslmode       "require"}))
-
-(defn process-database-spec [{:keys [jdbc-url] :as db-spec}]
-  (if jdbc-url
-    (hikari-connection-map jdbc-url)
-    db-spec))
-
-(defn datasource-options []
-  (merge {:auto-commit        true
-          :read-only          false
-          :connection-timeout 30000
-          :validation-timeout 5000
-          :idle-timeout       600000
-          :max-lifetime       1800000
-          :minimum-idle       10
-          :maximum-pool-size  10
-          :pool-name          "db-pool"
-          :adapter            "postgresql"
-          :register-mbeans    false}
-    (process-database-spec (:database-spec config))))
-
-(defstate pool
-  :start (pool/make-datasource (datasource-options))
-  :stop (pool/close-datasource pool))
-</code></pre><h2 id="step-3---something-to-run">Step 3 - Something to Run</h2><p>Now we just need a <code>Procfile</code>:</p><pre><code>web: java -cp fulcro.jar clojure.main -m app.server-main
-</code></pre><p>And we're good to go! 👍</p><hr /><h3 id="ps-if-youre-getting">PS: If you're getting:</h3><h4 id="problem-1---connection-refused-during-deploy">Problem 1 - Connection Refused during deploy</h4><pre><code>[web.1]: Execution error (ConnectException) at java.net.PlainSocketImpl/socketConnect (PlainSocketImpl.java:-2).
-[web.1]: Connection refused (Connection refused)
-</code></pre><p>Then you many not be passing in <code>src/main/config/prod.edn</code>:</p><pre><code>:sslmode "require"
-</code></pre><p>Basically, your postgres database is refusing the connection, so you need to pass in that attribute (or something else if you aren't using hikari) =)...</p><h4 id="problem-2---just-404-everywhere">Problem 2 - Just 404 everywhere!</h4><p>You can't see anything and when you try and access your javascript files, they're 404ing. You may need to also wrap-files in <code>src/main/config/default.edn</code>.</p><pre><code>:static    {:resources "public"
-            :files     "resources/public"} ; &lt;-- Add this!
-</code></pre><p>This is to do with the build order, if you built your clojurescipt code with shadow-cljs first, then when you build your depstar uberjar, the jar file you make will have a copy of your code, so you won't need this.</p><p>On the other hand, if you're wanting to update your static files separate to what's in your jar, say because you're updating them at a different rate, you want to make sure your uberjaring doesn't see them.</p><p>So do the shadow-cljs after the uberjar. That way they'll get served off the file system. This is probably also what's wrong if you're asking yourself why the file you've just edited/changed isn't showing up on your server.</p><p>You probably don't want to do this on Heroku, but it's useful to know about :)...</p><h4 id="problem-3---some-sort-of-cors-error">Problem 3 - Some sort of CORS error?</h4><p>You may have forgotten to add heroku to your list of legal origins in <code>src/main/config/prod.edn</code>:</p><pre><code>:legal-origins #{"&lt;some pretty heroku name&gt;.herokuapp.com" "localhost"}
-</code></pre><p>CORS is not a small topic, but <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">well worth understanding</a>.</p><p>Cliff notes, browsers don't let pages fetch content from other domain names, unless those other domain names say they already know them and are ok with it.</p><p>Depending on what you're doing, say serving content from s3 under a different domain and wanting to access this site you just deployed, you need to say that the domain serving the content is allowed to fetch. Not doing so leads to all kinds of annoying behaviour for you, caused by browsers trying to be secure.</p><h4 id="problem-4---i-just-keep-getting-application-error-">Problem 4 - I just keep getting "Application Error" 🤯</h4><p>First thing to do, check your logs!</p><pre><code>heroku logs --tail
-</code></pre><p>Look for stuff like this:</p><pre><code>2020-04-12T12:15:00.000000+00:00 heroku[web.1]: State changed from crashed to starting
-2020-04-12T12:15:01.000000+00:00 heroku[router]: at=error code=H10 desc="App crashed"
-</code></pre><p>Your app's crashed, try restarting it!</p><pre><code>heroku ps:restart
-</code></pre><p>This can also happen with an <code>R10</code> or boot timeout, if that's happening a lot, try and work out why your startup time is too slow?</p><p>Another one is:</p><pre><code>2020-04-12T17:40:10.000000+00:00 app[worker.1]: Working
-2020-04-12T17:40:10.000000+00:00 heroku[worker.1]: Process running mem=569MB(111.1%)
-2020-04-12T17:40:11.000000+00:00 heroku[worker.1]: Error R14 (Memory quota exceeded)
-2020-04-12T17:41:52.000000+00:00 app[worker.1]: Working
-</code></pre><p>That R14 is you're going over the memory by a fair bit!</p><p>Maybe scale up your dyno?</p><pre><code>heroku ps:scale web=1:standard-2x
-</code></pre><p>Pay attention to that <code>standard-2x</code> bit, we're jumping up to a dyno that has 1GB memory, so your server cost is going to be $50 per month per dyno!</p><h3 id="pps-an-updated-example">PPS: An Updated Example!</h3><p>If you're having issues, <a href="https://github.com/Folcon/fulcro-template">I've updated my currently up-to-date version of the code here</a>.</p><h3 id="acknowledgements">Acknowledgements</h3><p>Thanks to <a href="https://www.gertgoet.com/2019/02/06/deploying-a-tools-deps-clojure-project-to-heroku.html">Gert Goet for his enlightening blog post</a>
-And the friendly folks in the #fulcro slack!</p>
+(defstate middleware
+  :start
+  (let [defaults-config (:ring.middleware/defaults-config config)
+        legal-origins   (get config :legal-origins #{"localhost"})]
+    (-&gt; not-found-handler
+      ...
+      (wrap-defaults (assoc-in defaults-config [:session :store] mem-store))  ;; &lt;-- Adjust this to take our new session store
+      wrap-gzip)))
+</code></pre><p>Finally, and this part is important, we need to change our <code>src/main/config/defaults.edn</code>:</p><pre><code>:static    {}
+:session   {}  ;; &lt;-- this is set to true in the template
+:security  {}
+</code></pre><p>And we're done! Not much right? But now you can take <a href="https://github.com/Folcon/fulcro-template/tree/20fdb57adb904823bd4500a5c2ebcd921d0dee62">the example template here</a>, which is just a fork of the <a href="https://github.com/fulcrologic/fulcro-template">official fulcro template</a> and have working sessions if you use a <code>ws-remote</code> =)...</p><p>You can use the master version of my fork, but it may have other stuff in there you don't want...</p>
 </div>
 
 <div id="post-tags">
     <b>Tags: </b>
     
-    <a href="/tags-output/beginner/">beginner</a>
+    <a href="/tag/sessions/">sessions</a>
     
-    <a href="/tags-output/heroku/">heroku</a>
+    <a href="/tag/beginner/">beginner</a>
     
-    <a href="/tags-output/fulcro/">fulcro</a>
+    <a href="/tag/fulcro/">fulcro</a>
+    
+    <a href="/tag/websockets/">websockets</a>
     
 </div>
 
@@ -185,7 +120,7 @@ And the friendly folks in the #fulcro slack!</p>
     <div id="prev-next">
         
         
-        <a class="right" href="/posts-output/2020-04-10-Fulcro-and-Postgres/">Fulcro and Postgres &raquo;</a>
+        <a class="right" href="/post/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy &raquo;</a>
         
     </div>
 </div>
@@ -206,11 +141,11 @@ And the friendly folks in the #fulcro slack!</p>
                     <h3>Recent Posts</h3>
                     <ul>
                         
-                        <li><a href="/posts-output/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy</a></li>
+                        <li><a href="/post/2020-04-20-Shared-Websocket-Sessions-with-Fulcro/">Shared Websocket Sessions with Fulcro</a></li>
                         
-                        <li><a href="/posts-output/2020-04-10-Fulcro-and-Postgres/">Fulcro and Postgres</a></li>
+                        <li><a href="/post/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy</a></li>
                         
-                        <li><a href="/posts-output/2020-04-07-Fulcro-Review-PLUS-websockets/">A Fulcro Review + Websockets!</a></li>
+                        <li><a href="/post/2020-04-10-Fulcro-and-Postgres/">Fulcro and Postgres</a></li>
                         
                     </ul>
                 </div>
@@ -220,25 +155,27 @@ And the friendly folks in the #fulcro slack!</p>
                     <h3>Tags</h3>
                     <ul>
                         
-                        <li><a href="/tags-output/release/">release</a></li>
+                        <li><a href="/tag/release/">release</a></li>
                         
-                        <li><a href="/tags-output/delaunator-cljc/">delaunator-cljc</a></li>
+                        <li><a href="/tag/delaunator-cljc/">delaunator-cljc</a></li>
                         
-                        <li><a href="/tags-output/postgres/">postgres</a></li>
+                        <li><a href="/tag/sessions/">sessions</a></li>
                         
-                        <li><a href="/tags-output/beginner/">beginner</a></li>
+                        <li><a href="/tag/postgres/">postgres</a></li>
                         
-                        <li><a href="/tags-output/heroku/">heroku</a></li>
+                        <li><a href="/tag/beginner/">beginner</a></li>
                         
-                        <li><a href="/tags-output/getting-unstuck/">getting-unstuck</a></li>
+                        <li><a href="/tag/heroku/">heroku</a></li>
                         
-                        <li><a href="/tags-output/reflection/">reflection</a></li>
+                        <li><a href="/tag/getting-unstuck/">getting-unstuck</a></li>
                         
-                        <li><a href="/tags-output/fulcro/">fulcro</a></li>
+                        <li><a href="/tag/reflection/">reflection</a></li>
                         
-                        <li><a href="/tags-output/websockets/">websockets</a></li>
+                        <li><a href="/tag/fulcro/">fulcro</a></li>
                         
-                        <li><a href="/tags-output/performance/">performance</a></li>
+                        <li><a href="/tag/websockets/">websockets</a></li>
+                        
+                        <li><a href="/tag/performance/">performance</a></li>
                         
                     </ul>
                 </div>

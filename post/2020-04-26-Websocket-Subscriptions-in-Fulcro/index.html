@@ -2,12 +2,19 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
     <meta charset="utf-8"/>
-    <title>Alien Brain: Posts Tagged &quot;postgres&quot;</title>
+    <title>Alien Brain: Websocket Subscriptions in Fulcro</title>
     
-    <meta name="description" content="Musings">
-    <meta name="keywords" content="">
-    
-    <link rel="canonical" href="//folcon.github.io/tag/postgres/">
+<meta name="keywords" content="release,delaunator-cljc,sessions,postgres,beginner,heroku,getting-unstuck,reflection,fulcro,websockets,performance,subscriptions">
+
+<meta name="description" content="How do I keep my clients up to date?At this point it&#39;s pretty easy!">
+
+<meta property="og:description" content="How do I keep my clients up to date?At this point it&#39;s pretty easy!">
+
+<meta property="og:url" content="//folcon.github.io/post/2020-04-26-Websocket-Subscriptions-in-Fulcro/" />
+<meta property="og:title" content="Websocket Subscriptions in Fulcro" />
+<meta property="og:type" content="article" />
+
+    <link rel="canonical" href="//folcon.github.io/post/2020-04-26-Websocket-Subscriptions-in-Fulcro/">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="//fonts.googleapis.com/css?family=Alegreya:400italic,700italic,400,700" rel="stylesheet"
           type="text/css">
@@ -50,17 +57,64 @@
         <div class="col-lg-9">
             <div id="content">
                 
-<div id="posts-by-tag">
-    <div id="page-header">
-        <h2>Posts Tagged &quot;postgres&quot;</h2>
+<div id="post">
+    <div class="post-header">
+    <div id="post-meta" class="row">
+        <div class="col-lg-6">26 April 2020</div>
+        
     </div>
-    <ul>
+    <h2>Websocket Subscriptions in Fulcro</h2>
+</div>
+<div>
     
-        <li>
-            <a href="/post/2020-04-10-Fulcro-and-Postgres/">Fulcro and Postgres</a>
-        </li>
+    <h3 id="how-do-i-keep-my-clients-up-to-date">How do I keep my clients up to date?</h3><h4 id="at-this-point-its-pretty-easy">At this point it's pretty easy!</h4><p>That's right this turned out to be pretty straightforward =)...</p><p>If you're not sure how to setup websockets in Fulcro, <a href="https://folcon.github.io/post/2020-04-07-Fulcro-Review-PLUS-websockets/">we've covered it before here</a>.</p><p>Now for a quick dash through this, fundamentally we just need to setup two functions, one to interact with the server-side and one to capture whatever we sent from the client-side.</p><p>Let's tackle the server-side first.</p><p>In <code>app/server_components/websockets.clj</code>, we can define a broadcast function:</p><pre><code>(ns app.server-components.websockets
+  (:require ...
+            [com.fulcrologic.fulcro.networking.websocket-protocols :refer [push]] ;; Primarily we're just pulling in this
+            ...))
+...
+
+(defn broadcast! [topic data]
+  (let [uids (:any @(:connected-uids websockets))]
+    (doseq [uid uids]
+      (push websockets uid topic data))))
+</code></pre><p>I've just done a broadcast function, because that's straightforward =)...</p><p>Then in <code>app/application.cljs</code> we define a <code>push-handler</code> function and pass it into <code>fulcro-websocket-remote</code>:</p><pre><code>(defn push-handler [{:keys [topic msg]}]
+  (println :push-handler topic msg))
+
+(defonce SPA
+  (app/fulcro-app
+    {:remotes {:remote (net/fulcro-http-remote
+                         {:url "/api"
+                          :request-middleware secured-request-middleware})
+               :ws-remote (fws/fulcro-websocket-remote {:push-handler push-handler})}})) ;; In it goes =)...
+</code></pre><p>Similarly your push handler can be arbitrarily complex.</p><p>Now if you just call in <code>app.server-components.websockets</code>:</p><pre><code>(broadcast! :test! {:a 1 :b "b"})
+</code></pre><p>You should see the text below appear in your js console:</p><pre><code>:push-handler :test! {:a 1 :b "b"}
+</code></pre><p>And we're done! Told you that would be quick!</p><h3 id="ps-example-of-where-we-started-from">PS: Example of where we started from</h3><p>If you're having issues, <a href="https://github.com/Folcon/fulcro-template/tree/355422d61ab2eba952fb42a3cc13091e01648b4d">Here's where we began from</a>.</p>
+</div>
+
+<div id="post-tags">
+    <b>Tags: </b>
     
-    </ul>
+    <a href="/tag/beginner/">beginner</a>
+    
+    <a href="/tag/fulcro/">fulcro</a>
+    
+    <a href="/tag/websockets/">websockets</a>
+    
+    <a href="/tag/subscriptions/">subscriptions</a>
+    
+</div>
+
+
+    <div id="prev-next">
+        
+        
+        <a class="right" href="/post/2020-04-20-Shared-Websocket-Sessions-with-Fulcro/">Shared Websocket Sessions with Fulcro &raquo;</a>
+        
+    </div>
+
+    
+
+
 </div>
 
             </div>

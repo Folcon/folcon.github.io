@@ -53,64 +53,47 @@
 <div id="post">
     <div class="post-header">
     <div id="post-meta" class="row">
-        <div class="col-lg-6">20 April 2020</div>
+        <div class="col-lg-6">26 April 2020</div>
         
     </div>
-    <h2>Shared Websocket Sessions with Fulcro</h2>
+    <h2>Websocket Subscriptions in Fulcro</h2>
 </div>
 <div>
     
-    <h3 id="why-doesnt-my-server-remember-who-i-am">Why doesn't my server remember who I am?</h3><h4 id="im-only-using-a-different-transport">I'm only using a different transport!</h4><p>So I was expecting this to work out of the box, or at the very least be documented, but I couldn't find anything regarding it, so I figured best to do it myself =)...</p><p>It's thankfully not that complicated, just add to the default template a new namespace <code>src/main/app/server_components/session.clj</code>:</p><pre><code>(ns app.server-components.session
-  (:require [mount.core :refer [defstate]]
-            [ring.middleware.session.store :as store]
-            [ring.middleware.session.memory :refer [memory-store]]))
-
-
-(defstate mem-store
-  :start (memory-store))
-
-(defn ws-lookup [key]
-  (store/read-session mem-store key))
-
-(defn get-session [env]
-  (condp #(get-in %2 %1) env
-    [:request :session/key]  ;; websockets path
-    (some-&gt; env :request :session/key ws-lookup)
-    [:ring/request]          ;; http path
-    (some-&gt; env :ring/request :session)
-    nil))
-</code></pre><p>This is basically going to be our shared session store, obviously you can persist this store if you want, but for simplicity we'll just use the default memory one.</p><p>Now we need to adjust our middleware file <code>src/main/app/server_components/middleware.clj</code>:</p><pre><code>(ns app.server-components.middleware
-  (:require
-    ...
-    [app.server-components.session :refer [mem-store]]  ;; &lt;-- Now stick the new ns we made into it
-    ...))
-
+    <h3 id="how-do-i-keep-my-clients-up-to-date">How do I keep my clients up to date?</h3><h4 id="at-this-point-its-pretty-easy">At this point it's pretty easy!</h4><p>That's right this turned out to be pretty straightforward =)...</p><p>If you're not sure how to setup websockets in Fulcro, <a href="https://folcon.github.io/post/2020-04-07-Fulcro-Review-PLUS-websockets/">we've covered it before here</a>.</p><p>Now for a quick dash through this, fundamentally we just need to setup two functions, one to interact with the server-side and one to capture whatever we sent from the client-side.</p><p>Let's tackle the server-side first.</p><p>In <code>app/server_components/websockets.clj</code>, we can define a broadcast function:</p><pre><code>(ns app.server-components.websockets
+  (:require ...
+            [com.fulcrologic.fulcro.networking.websocket-protocols :refer [push]] ;; Primarily we're just pulling in this
+            ...))
 ...
 
-(defstate middleware
-  :start
-  (let [defaults-config (:ring.middleware/defaults-config config)
-        legal-origins   (get config :legal-origins #{"localhost"})]
-    (-&gt; not-found-handler
-      ...
-      (wrap-defaults (assoc-in defaults-config [:session :store] mem-store))  ;; &lt;-- Adjust this to take our new session store
-      wrap-gzip)))
-</code></pre><p>Finally, and this part is important, we need to change our <code>src/main/config/defaults.edn</code>:</p><pre><code>:static    {}
-:session   {}  ;; &lt;-- this is set to true in the template
-:security  {}
-</code></pre><p>And we're done! Not much right? But now you can take <a href="https://github.com/Folcon/fulcro-template/tree/20fdb57adb904823bd4500a5c2ebcd921d0dee62">the example template here</a>, which is just a fork of the <a href="https://github.com/fulcrologic/fulcro-template">official fulcro template</a> and have working sessions if you use a <code>ws-remote</code> =)...</p><p>You can use the master version of my fork, but it may have other stuff in there you don't want...</p>
+(defn broadcast! [topic data]
+  (let [uids (:any @(:connected-uids websockets))]
+    (doseq [uid uids]
+      (push websockets uid topic data))))
+</code></pre><p>I've just done a broadcast function, because that's straightforward =)...</p><p>Then in <code>app/application.cljs</code> we define a <code>push-handler</code> function and pass it into <code>fulcro-websocket-remote</code>:</p><pre><code>(defn push-handler [{:keys [topic msg]}]
+  (println :push-handler topic msg))
+
+(defonce SPA
+  (app/fulcro-app
+    {:remotes {:remote (net/fulcro-http-remote
+                         {:url "/api"
+                          :request-middleware secured-request-middleware})
+               :ws-remote (fws/fulcro-websocket-remote {:push-handler push-handler})}})) ;; In it goes =)...
+</code></pre><p>Similarly your push handler can be arbitrarily complex.</p><p>Now if you just call in <code>app.server-components.websockets</code>:</p><pre><code>(broadcast! :test! {:a 1 :b "b"})
+</code></pre><p>You should see the text below appear in your js console:</p><pre><code>:push-handler :test! {:a 1 :b "b"}
+</code></pre><p>And we're done! Told you that would be quick!</p><h3 id="ps-example-of-where-we-started-from">PS: Example of where we started from</h3><p>If you're having issues, <a href="https://github.com/Folcon/fulcro-template/tree/355422d61ab2eba952fb42a3cc13091e01648b4d">Here's where we began from</a>.</p>
 </div>
 
 <div id="post-tags">
     <b>Tags: </b>
-    
-    <a href="/tag/sessions/">sessions</a>
     
     <a href="/tag/beginner/">beginner</a>
     
     <a href="/tag/fulcro/">fulcro</a>
     
     <a href="/tag/websockets/">websockets</a>
+    
+    <a href="/tag/subscriptions/">subscriptions</a>
     
 </div>
 
@@ -120,7 +103,7 @@
     <div id="prev-next">
         
         
-        <a class="right" href="/post/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy &raquo;</a>
+        <a class="right" href="/post/2020-04-20-Shared-Websocket-Sessions-with-Fulcro/">Shared Websocket Sessions with Fulcro &raquo;</a>
         
     </div>
 </div>
@@ -141,11 +124,11 @@
                     <h3>Recent Posts</h3>
                     <ul>
                         
+                        <li><a href="/post/2020-04-26-Websocket-Subscriptions-in-Fulcro/">Websocket Subscriptions in Fulcro</a></li>
+                        
                         <li><a href="/post/2020-04-20-Shared-Websocket-Sessions-with-Fulcro/">Shared Websocket Sessions with Fulcro</a></li>
                         
                         <li><a href="/post/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy</a></li>
-                        
-                        <li><a href="/post/2020-04-10-Fulcro-and-Postgres/">Fulcro and Postgres</a></li>
                         
                     </ul>
                 </div>
@@ -176,6 +159,8 @@
                         <li><a href="/tag/websockets/">websockets</a></li>
                         
                         <li><a href="/tag/performance/">performance</a></li>
+                        
+                        <li><a href="/tag/subscriptions/">subscriptions</a></li>
                         
                     </ul>
                 </div>

@@ -4,7 +4,7 @@
     <meta charset="utf-8"/>
     <title>Alien Brain: Shared Websocket Sessions with Fulcro</title>
     
-<meta name="keywords" content="release,delaunator-cljc,sessions,postgres,beginner,heroku,getting-unstuck,reflection,fulcro,websockets,performance">
+<meta name="keywords" content="release,delaunator-cljc,sessions,postgres,beginner,heroku,getting-unstuck,reflection,fulcro,websockets,performance,subscriptions">
 
 <meta name="description" content="Why doesn&#39;t my server remember who I am?I&#39;m only using a different transport!">
 
@@ -105,7 +105,9 @@
 </code></pre><p>Finally, and this part is important, we need to change our <code>src/main/config/defaults.edn</code>:</p><pre><code>:static    {}
 :session   {}  ;; &lt;-- this is set to true in the template
 :security  {}
-</code></pre><p>And we're done! Not much right? But now you can take <a href="https://github.com/Folcon/fulcro-template/tree/20fdb57adb904823bd4500a5c2ebcd921d0dee62">the example template here</a>, which is just a fork of the <a href="https://github.com/fulcrologic/fulcro-template">official fulcro template</a> and have working sessions if you use a <code>ws-remote</code> =)...</p><p>You can use the master version of my fork, but it may have other stuff in there you don't want...</p>
+</code></pre><p>And we're done! Not much right? But now you can take <a href="https://github.com/Folcon/fulcro-template/tree/20fdb57adb904823bd4500a5c2ebcd921d0dee62">the example template here</a>, which is just a fork of the <a href="https://github.com/fulcrologic/fulcro-template">official fulcro template</a> and have working sessions if you use a <code>ws-remote</code> =)...</p><p>You can use the master version of my fork, but it may have other stuff in there you don't want...</p><h3 id="ps-if-you-keep-losing-your-session-at-the-repl">PS: If you keep losing your session at the REPL</h3><p>I don't know about you but when I'm developing I live in the REPL/Editor workflow, but the setup above has one downside, every time you sync your editor with your REPL you can lose your session state, requiring frequent logins, gumming up your flow. Or just add <code>^{:on-reload :noop}</code> as shown below to your <code>defstate</code> and that won't be a problem!</p><p>And if you really do want to clear the session, just call <code>(mount/stop)</code> <code>(mount/start)</code> and you're good to go.</p><pre><code>(defstate ^{:on-reload :noop} mem-store
+  :start (memory-store))
+</code></pre>
 </div>
 
 <div id="post-tags">
@@ -123,6 +125,8 @@
 
 
     <div id="prev-next">
+        
+        <a href="/post/2020-04-26-Websocket-Subscriptions-in-Fulcro/">&laquo; Websocket Subscriptions in Fulcro</a>
         
         
         <a class="right" href="/post/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy &raquo;</a>
@@ -150,11 +154,11 @@
                     <h3>Recent Posts</h3>
                     <ul>
                         
+                        <li><a href="/post/2020-04-26-Websocket-Subscriptions-in-Fulcro/">Websocket Subscriptions in Fulcro</a></li>
+                        
                         <li><a href="/post/2020-04-20-Shared-Websocket-Sessions-with-Fulcro/">Shared Websocket Sessions with Fulcro</a></li>
                         
                         <li><a href="/post/2020-04-12-Fulcro-on-Heroku/">Fulcro on Heroku - Time to deploy</a></li>
-                        
-                        <li><a href="/post/2020-04-10-Fulcro-and-Postgres/">Fulcro and Postgres</a></li>
                         
                     </ul>
                 </div>
@@ -185,6 +189,8 @@
                         <li><a href="/tag/websockets/">websockets</a></li>
                         
                         <li><a href="/tag/performance/">performance</a></li>
+                        
+                        <li><a href="/tag/subscriptions/">subscriptions</a></li>
                         
                     </ul>
                 </div>

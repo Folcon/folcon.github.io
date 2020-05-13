@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Alien Brain: Fulcro via re-frame</title>
+    
+<meta name="keywords" content="release,skills,delaunator-cljc,sessions,postgres,beginner,heroku,getting-unstuck,reflection,fulcro,websockets,performance,subscriptions">
+
+<meta name="description" content="I couldn&#39;t find some cliff notesSo I wrote some">
+
+<meta property="og:description" content="I couldn&#39;t find some cliff notesSo I wrote some">
+
+<meta property="og:url" content="//folcon.github.io/post/fulcro-basics/2020-05-12-Fulcro-via-re-frame/" />
+<meta property="og:title" content="Fulcro via re-frame" />
+<meta property="og:type" content="article" />
+
+    <link rel="canonical" href="//folcon.github.io/post/fulcro-basics/2020-05-12-Fulcro-via-re-frame/">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="//fonts.googleapis.com/css?family=Alegreya:400italic,700italic,400,700" rel="stylesheet"
+          type="text/css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css">
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/styles/default.min.css">
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+
+
+<nav class="navbar navbar-default">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alien Brain</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav navbar-right">
+                <li ><a href="/">Home</a></li>
+                <li
+                ><a href="/archives/">Archives</a></li>
+                
+                <li><a href="/feed.xml">RSS</a></li>
+            </ul>
+        </div><!--/.nav-collapse -->
+    </div><!--/.container-fluid -->
+</nav>
+
+
+<div class="container">
+
+
+    <div class="row">
+        <div class="col-lg-9">
+            <div id="content">
+                
+<div id="post">
+    <div class="post-header">
+    <div id="post-meta" class="row">
+        <div class="col-lg-6">12 May 2020</div>
+        
+    </div>
+    <h2>Fulcro via re-frame</h2>
+</div>
+<div>
+    
+    <h3 id="i-couldnt-find-some-cliff-notes">I couldn't find some cliff notes</h3><h4 id="so-i-wrote-some">So I wrote some</h4><p>So I wanted to do a post on starting with the basics, trying to introduce key ideas as they become necessary, at some level, it would be just doing things that are straightforward even if it's not the best way to do it, but at least it would be a starting point...</p><p>Then this happened<small><sup id="fnref-1"><a class="footnote-ref" href="#fn-1">1</a></sup></small>...</p><p>To be honest, I'm mightly tempted to take a look at how that all works, but for now, I'll keep at this.</p><p>But in that same vein, let's use <code>re-frame</code> as a metaphor for what we want to do and how do we do it?</p><p>Before we do that, let's get one thing out of the way, Fulco is trying to do a lot more than re-frame does, providing a bridge between frontend and backend as well as helping you to manage both, but by re-frame being relatively focused it gains a lot in simplicity in terms of ease for someone to get started in it.</p><p>However, before we get into that, if this isn't quite what you're looking for and want some high-level guidance anyway, let's cover two very different perspectives around thinking about, prototyping and designing a site and what might be helpful.</p><h3 id="frontend-first">Frontend First</h3><p>You want to just get something up on a screen that you can look at and tinker with. I completely understand this, a lot of people do this while prototyping some vague formless notion they have in their heads about what they want to make =)...</p><p>Some quick tips if you just want to dive in:</p><p>I'd say the <a href="https://www.youtube.com/watch?v=wEjNWUMCX78&amp;list=PLVi9lDx-4C_T7jkihlQflyqGqU4xVtsfi">first few videos of the online tutorials Tony Kay did</a> will be useful.</p><p>Focus on just using stuff like <code>defsc</code>, <code>:ident</code> and <code>:initial-state</code>:</p><pre><code>(defsc ItemList [this props]
+  {:query         [{:item-list/all-items []}]
+   :initial-state {:item-list/all-items []}
+   :ident         (fn [] [:component/id ::item-list])}
+  (dom/p
+    (pr-str "...")))
+
+(def ui-item-list (comp/factory ItemList))
+</code></pre><p>Just build a bunch of small self-contained components and get used to how to style them, it might be useful to know how to <a href="http://book.fulcrologic.com/#_taking_control_of_the_sub_dom_d3_etc">wrap simple js components</a> as well.</p><p>Here's one that I did in a few minutes by taking apart some examples + npm install:</p><pre><code>(ns app.ui.charts
+  (:require [goog.object :as gobj]
+            [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+            [com.fulcrologic.fulcro.dom :as dom]
+            ["vega" :as vegas]
+            ["vega-lite" :as vl]
+            ["vega-embed" :as ve]))
+
+(defn parse-vl-spec [elem spec]
+  (when spec
+    (let [opts #js {"mode"     "vega-lite"
+                    "renderer" "canvas"
+                    "actions"  false
+                    "tooltip" {"theme" "dark"}}
+          js-spec (clj-&gt;js (assoc spec :$schema "https://vega.github.io/schema/vega-lite/v4.10.2.json"))]
+      (ve elem js-spec opts))))
+
+(defsc Chart [this _props]
+  {:componentDidMount     (fn [this]
+                            (when-let [dom-node (gobj/get this "div")]
+                              (let [spec (comp/props this)]
+                                (parse-vl-spec dom-node spec))))
+   :shouldComponentUpdate (fn [this next-props _next-state]
+                            (when-let [dom-node (gobj/get this "div")]
+                              (let [new-spec next-props]
+                                next-props
+                                (parse-vl-spec dom-node new-spec)))
+                            false)}
+  (dom/div {:ref (fn [r] (gobj/set this "div" r))}))
+
+(def chart (comp/factory Chart))
+</code></pre><h3 id="backend-first">Backend First</h3><p>Similarly, you might just be more comfortable with working with some data structures and services and worrying about what it's going to look like a lot later.</p><p>For diving in with this viewpoint I'd say, take a look at <a href="https://wilkerlucio.github.io/pathom/v2">pathom</a>, just get comfortable with it =)... It's the backbone of how data access works on the backend and will act as your bridge to other data sources.</p><h2 id="getting-started">Getting started</h2><p>Now that we've covered that let's discuss things from a <code>re-frame</code> viewpoint.</p><p>At a high level <code>re-frame</code> tries to have a really simple model, you have an <code>app-db</code> which encompasses all of your application state, you can define <code>subscriptions</code> which allow you to subscribe to parts of it and then you can define <code>event handlers</code> to which you can dispatch events which change your application state.</p><p>Yes, there's stuff like effects and interceptors, etc but you can get pretty far with just understanding <code>subscriptions</code> and <code>events</code>. Well that and <code>hiccup</code>, which is just a weird kind of HTML, so that's not too bad.</p><p>Ok, how does Fulco do it?</p><p>Well, let's start with the similarities, instead of <code>subscriptions</code> Fulcro uses the idea of <code>queries</code> to allow you to pull data out of your app-db and its equivalent of <code>event handlers</code> are <code>defmutations</code>.</p><p>Now let's introduce a new concept, <code>components</code>, in Fulcro, queries live on components, which are basically <a href="https://reactjs.org/docs/components-and-props.html">react class-based components</a>.</p><h3 id="setup">Setup</h3><p>Before we take a look at how all that works, let's get some basic setup done =)...</p><p><a href="https://github.com/Folcon/fulcro-starter/tree/2a769604bfb3bca9140839b1762a7727cae8f1d3">Here's a link to a github repo</a> to get you started =)...</p><p>You can just get started by going there, cloning the repo and then once you've got a terminal in the project folder, call the commands below to get started.</p><pre><code>npm install
+npx shadow-cljs watch main
+</code></pre><p>This is also a good opportunity to install <a href="https://chrome.google.com/webstore/detail/fulcro-inspect/meeijplnfjcihnhkpanepcaffklobaal?hl=en">Fulcro Inspect</a> if you haven't already.</p><p>Now that you can follow along by navigating to <code>http://localhost:8000/</code>.</p><p>Let's take a look at how that all works.</p><h3 id="components">Components</h3><p>So let's take a look at a component and how it works, this is probably the simplest component you can write.</p><pre><code>(defsc Thing [this props]
+  {} ;; &lt;-- This is technically optional, but I find it problematic not to have it...
+  (dom/div
+    (dom/p "TEST")
+    (dom/p props)))
+</code></pre><p><code>defsc</code> which I'm using is required by <code>[com.fulcrologic.fulcro.components :as comp :refer [defsc]]</code>.</p><p>Let's take that simple example and expand it a little, so we need the <code>client.cljs</code> file:</p><pre><code>(ns fulcro-starter.client
+  (:require
+   [com.fulcrologic.fulcro.application :as app]
+   [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+   [com.fulcrologic.fulcro.dom :as dom]))
+
+(defonce app (app/fulcro-app))
+
+(defsc Thing [this props]
+  {}
+  (dom/div
+    (dom/p "TEST")
+    (dom/p props)))
+
+(defn ^:export init
+  "Shadow-cljs sets this up to be our entry-point function. See shadow-cljs.edn `:init-fn` in the modules of the main build."
+  []
+  (app/mount! app Thing "app")
+  (js/console.log "Loaded"))
+
+(defn ^:export refresh
+  "During development, shadow-cljs will call this on every hot reload of source. See shadow-cljs.edn"
+  []
+  ;; re-mounting will cause forced UI refresh, update internals, etc.
+  (app/mount! app Thing "app")
+  (js/console.log "Hot reload"))
+</code></pre><p>Let's make this a little more visible:</p><pre><code>(defsc Thing [this props]
+  {}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (pr-str props)))
+</code></pre><p>Now if you have <code>Fulcro Inspect</code> running, you can take a peek inside the app-db of our Fulcro application by selecting the tab in the inspector.</p><p><img src="/posts/fulcro-basics/initial-app-db.png" alt="initial app-db" /></p><p>You can see that <code>Fulcro Inspect</code> has added a uuid to the app-db, it does that to track which of the possibly many fulcro apps that could be on a page it's targeting.</p><p>Now, let's start looking at how to do some basic subscription-like stuff with queries!</p><h3 id="queries">Queries</h3><p>Now, how do we load data into our app-db? Well, there are two ways to do it:</p><ol><li>Fulco bridges the frontend and the backend so you can just define your data on the backend and pull it in2</li><li>You can use the key <code>:initial-state</code> on a <code>component</code> to specify what initial state if any it has.</li></ol><p>Seeing as we don't want to jump into the server-side (frontend) of things just yet, let's focus on <code>2.</code> for now.</p><pre><code>(defsc Thing [this props]
+  {:initial-state {:a-thing "Some stuff!"}}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (pr-str props)))
+</code></pre><p>So we've added <code>:a-thing</code> to our component! Note that by convention components are written in TitleCase.</p><p><em>Now this is important, we've changed something inside an <code>:initial-state</code>, Fulcro expects that whatever's within the initial state to be fixed on first load, so you will need to reload the page to see anything change!</em></p><p>Now you should see something like this:</p><p><img src="/posts/fulcro-basics/after-adding-a-thing.png" alt="the app-db after adding :a-thing" /></p><p>Great, so adding data to <code>:initial-state</code> changed what's visible inside the app-db.</p><p>Now you're probably wondering what we need queries for? Well let's take a look at having two components:</p><pre><code>(defsc AnotherThing [this props]
+  {}
+  (dom/div
+    (dom/h3 "This is a AnotherThing!")
+    (pr-str props)))
+
+(def ui-another-thing (comp/factory AnotherThing))
+
+(defsc Thing [this props]
+  {:initial-state {:a-thing "Some stuff!"}}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (ui-another-thing props)
+    (pr-str props)))
+</code></pre><p>Now you've probably noticed that I've defined <code>ui-another-thing</code>? Well because <code>AnotherThing</code> is a React class, we have to feed it into a factory. The function we get out is what we use to display the component, as I've updated the <code>Thing</code> component to show.</p><p>Note: By convention, we prefix the resulting function with <code>ui-</code> and kebab-case it, so for example <code>YetAnotherThing</code> gives us <code>ui-yet-another-thing</code>.</p><p>But what's this? I'm passing in all the <code>props</code> from one component to another! How do we control what goes in? Or better yet, how can the <code>AnotherThing</code> component tell anyone who wishes to call it what it wants?</p><p>Enter <code>queries</code>:</p><pre><code>(defsc AnotherThing [this props]
+  {:query [:a-thing]}
+  (dom/div
+    (dom/h3 "This is a AnotherThing!")
+    (pr-str props)))
+
+(def ui-another-thing (comp/factory AnotherThing))
+
+(defsc Thing [this props]
+  {:initial-state {:a-thing "Some stuff!"}}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (ui-another-thing props)
+    (pr-str props)))
+</code></pre><p>Now, what's the point of this? Well, let's connect up a repl to the running shadow-cljs instance and take a look.</p><p>Shadow-cljs should have given you an nrepl port to connect to when it started up, eg: <code>shadow-cljs - nREPL server started on port 62040</code>. Now connect to that port and call:</p><pre><code>(shadow/repl :main)
+</code></pre><p>Now load into the ns <code>fulcro-starter.client</code> and evaluate this:</p><pre><code>(comp/get-query AnotherThing)
+#_#_=&gt; [:a-thing]
+</code></pre><p>Ah! So the component has a way of returning what it's query is when asked!</p><p>So how do we get <code>Thing</code> to know what <code>AnotherThing</code> wants? Just nest the queries!</p><p>But how do we nest them?</p><p>Like so?</p><pre><code>:query (comp/get-query AnotherThing)
+</code></pre><p>Err, no.</p><p>So we need to mention a few other things:</p><ol><li>queries should be a vector</li><li>if a component is directly using some data, then you can use the key, but if the component is going to hand it to a child, then that data needs to be nested one level.</li></ol><p>So let's take a look at that in stages:</p><ol><li>Update the <code>:initial-state</code> to add a level of nesting</li></ol><pre><code>(defsc Thing [this props]
+  {:initial-state {:an-added-level {:a-thing "Some stuff!"}}}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (pr-str props)))
+</code></pre><p>Now don't forget, we changed <code>:initial-state</code>, so let's refresh the page!</p><p><img src="/posts/fulcro-basics/after-adding-level-of-nesting.png" alt="app-db after adding a level of nesting" /></p><p>Alright! So our state is nested now</p><ol start="2"><li>Add the query for <code>Thing</code></li></ol><pre><code>(defsc Thing [this props]
+  {:query [:an-added-level]
+   :initial-state {:an-added-level {:a-thing "Some stuff!"}}}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (pr-str props)))
+</code></pre><p><img src="/posts/fulcro-basics/after-adding-a-query-to-thing.png" alt="app-db after a query to Thing" /></p><p>So now we can see that <code>Thing</code> is only getting the data it queried for ie: <code>:an-added-level</code>.</p><ol start="3"><li>Put in the <code>AnotherThing</code> component into the query</li></ol><pre><code>(defsc AnotherThing [this props]
+  {:query [:a-thing]}
+  (dom/div {:style {:border "1px solid black"}}  ;; &lt;-- I've added a style here to make the picture clearer
+    (dom/h3 "This is a AnotherThing!")
+    (pr-str props)))
+
+(def ui-another-thing (comp/factory AnotherThing))
+
+(defsc Thing [this props]
+  {:query [{:an-added-level (comp/get-query AnotherThing)}]
+   :initial-state {:an-added-level {:a-thing "Some stuff!"}}}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (ui-another-thing (:an-added-level props))
+    (pr-str props)))
+</code></pre><p><img src="/posts/fulcro-basics/after-adding-another-thing-to-thing-query.png" alt="app-db after adding AnotherThing to the Thing query" /></p><p>I've added a border to make it clear where the border between <code>AnotherThing</code> and <code>Thing</code> is.</p><p>You can see that each component lower down in the tree only gets the data it needs.</p><p>But wait! You might say, that's only because we're passing it in! Why all the ceremony?</p><p>Well, let's try asking <code>Thing</code> what it's query is!</p><pre><code>(comp/get-query Thing)
+#_#_=&gt; [{:an-added-level [:a-thing]}]
+</code></pre><p>Well what do you know, <code>Thing</code> asks for <code>AnotherThing</code>'s query as well.</p><p>So this is the reason, because we won't always be feeding in <code>:initial-state</code> to our components with all the data they need, instead we can use this query mechanism to ensure that any arbitrary tree of components can ask for exactly the data they need from Fulcro.</p><p>One other useful thing to note:</p><pre><code>(comp/get-query AnotherThing)
+#_#_=&gt; [:a-thing]
+(meta (comp/get-query AnotherThing))
+#_#_=&gt; {:component fulcro-starter.client/AnotherThing, :queryid "fulcro-starter.client/AnotherThing"}
+(comp/get-query Thing)
+#_#_=&gt; [{:an-added-level [:a-thing]}]
+(meta (comp/get-query Thing))
+#_#_=&gt; {:component fulcro-starter.client/Thing, :queryid "fulcro-starter.client/Thing"}
+</code></pre><p>You can see here that the returned queries also have some metadata associated with them, which says which component they came from and what query generated them. Fulcro understands how to unpack this and uses this to efficiently send the data back to the component who asked for it, this is why you should always nest queries as I've shown you.</p><p>If you see something break, there might be a component that's not following this rule.</p><p>Now, everything works right? Let's just refresh the page.</p><p><em>Oh no!</em> What happened? Our app-db has <code>nil</code> for <code>:an-added-level</code>!</p><p><img src="/posts/fulcro-basics/after-reload-breaks-bad-initial-state.png" alt="reload breaks bad initial-state" /></p><p>We've not set our <code>:initial-state</code> correctly!</p><p>Let's first introduce you to another function <code>get-initial-state</code>:</p><pre><code>(comp/get-initial-state Thing)
+#_#_=&gt; {:an-added-level {:a-thing "Some stuff!"}}
+</code></pre><p>So you see just like with <code>get-query</code> Fulcro has a way of getting the component's initial state, however by nesting the query as we've done:</p><pre><code>{:query [{:an-added-level (comp/get-query AnotherThing)}]}
+</code></pre><p>We're signalling to fulcro that the particular bit of state within <code>:an-added-level</code> belongs to <code>AnotherThing</code>, so really it should be the one we need to ask what should go there.</p><p>We can do that like this:</p><pre><code>(defsc AnotherThing [this props]
+  {:query [:a-thing]
+   :initial-state {:a-thing "Some stuff!"}}
+  (dom/div {:style {:border "1px solid black"}}
+    (dom/h3 "This is a AnotherThing!")
+    (pr-str props)))
+
+(def ui-another-thing (comp/factory AnotherThing))
+
+(defsc Thing [this props]
+  {:query [{:an-added-level (comp/get-query AnotherThing)}]
+   :initial-state (fn [_] {:an-added-level (comp/get-initial-state AnotherThing)})}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (ui-another-thing (:an-added-level props))
+    (pr-str props)))
+</code></pre><p>Now you should note that <code>Thing</code>'s <code>:initial-state</code> is a function of one param, that's because within <code>:initial-state</code> we're calling a function, if what <code>:initial-state</code> receives is not data, then you have to use that form.</p><p>Now you've probably spotted the loophole there, right? <code>Thing</code>'s <code>:initial-state</code> <em>is</em> a function, you could do anything in there!</p><pre><code>(defsc AnotherThing [this props]
+  {:query [:a-thing]}
+  (dom/div {:style {:border "1px solid black"}}
+    (dom/h3 "This is a AnotherThing!")
+    (pr-str props)))
+
+(def ui-another-thing (comp/factory AnotherThing))
+
+(defsc Thing [this props]
+  {:query [{:an-added-level (comp/get-query AnotherThing)}]
+   :initial-state (fn [_] {:an-added-level {:a-thing "Some stuff!"}})}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (ui-another-thing (:an-added-level props))
+    (pr-str props)))
+</code></pre><p>So yes, the above is perfectly valid! I personally do use this approach when I'm prototyping a small component and I haven't hooked up a server yet.</p><p>In either case, you get this:</p><p><img src="/posts/fulcro-basics/after-reload-with-good-initial-state.png" alt="reload with good initial-state" /></p><p>Right, there's a bunch more stuff we could cover, but I think it's worthwhile not packing too much stuff into one blog post.</p><p>So we've seen a high-level view of how to use queries to get subscribe like behaviour from Fulco, now let's just go over the other side of things.</p><h3 id="mutations">Mutations</h3><p>Let's keep to our two components, but adjust them slightly:</p><pre><code>(defsc AnotherThing [this props]
+  {:query [:a-thing]}
+  (dom/div {:style {:border "1px solid black"}}
+    (dom/h3 "This is a AnotherThing!")
+    (pr-str props)))
+
+(def ui-another-thing (comp/factory AnotherThing))
+
+(defsc Thing [this props]
+  {:query [{:a-list-of-things (comp/get-query AnotherThing)}]
+   :initial-state (fn [_] {:a-list-of-things [{:a-thing "1 stuff"}
+                                              {:a-thing "two stuff"}
+                                              {:a-thing "\uD83D\uDCA5\uD83D\uDCA5\uD83D\uDCA5 stuff"}]})}
+  (dom/div
+    (dom/h3 "This is a Thing!")
+    (map ui-another-thing (:a-list-of-things props))
+    (pr-str props)))
+</code></pre><p><img src="/posts/fulcro-basics/mutations-start.png" alt="starting with mutations" /></p><p>There we go, now we've got a list like thing, so we should be able to mutate this to add and remove stuff!</p><p>Now let's add in a mutation.</p><pre><code>(ns fulcro-starter.client
+  (:require
+   [com.fulcrologic.fulcro.application :as app]
+   [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+   [com.fulcrologic.fulcro.dom :as dom]
+   [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]))
+
+(defonce app (app/fulcro-app))
+
+(defmutation add-thing
+  "Mutation: Add a thing to :a-list-of-things"
+  [params]
+  (action [{:keys [state]}]
+    (println (pr-str @state))))
+</code></pre><p>Now ultimately we want to add a thing to our list, but let's take this whole process one step at a time =)...</p><pre><code>comp/transact! app [(add-thing {})])
+#_#_=&gt; #uuid"4c24d1ea-1e1e-40db-8601-c4e5f824f7ce"
+{:fulcro.inspect.core/app-id "fulcro-starter.client/Thing", :a-list-of-things [{:a-thing "1 stuff"} {:a-thing "two stuff"} {:a-thing "💥💥💥 stuff"}], :fulcro.inspect.core/app-uuid #uuid "1f775d10-dfbe-4960-b90e-4a2d5927c3e0", :com.fulcrologic.fulcro.application/active-remotes #{}}
+</code></pre><p>Ok so it spat out a uuid, and printed out the current state of the app-db!</p><p>Looking at what came out, we want to update <code>:a-list-of-things</code> <code>conj</code>'ing to it a new {:a-thing "four stuff"}, or something like that.</p><p>So let's try it!</p><pre><code>(defmutation add-thing
+  "Mutation: Add a thing to :a-list-of-things"
+  [params]
+  (action [{:keys [state]}]
+    (println (pr-str @state))
+    (swap! state update :a-list-of-things conj {:a-thing "four stuff"})))
+</code></pre><p>I update the <code>defmutation</code> and call this in the repl again:</p><pre><code>(comp/transact! app [(add-thing {})])
+=&gt; #uuid"76bb96cf-5840-461a-a203-bb9e77154690"
+{:fulcro.inspect.core/app-id "fulcro-starter.client/Thing", :a-list-of-things [{:a-thing "1 stuff"} {:a-thing "two stuff"} {:a-thing "💥💥💥 stuff"}], :fulcro.inspect.core/app-uuid #uuid "1f775d10-dfbe-4960-b90e-4a2d5927c3e0", :com.fulcrologic.fulcro.application/active-remotes #{}}
+</code></pre><p><img src="/posts/fulcro-basics/mutations-after-updating-with-add-thing.png" alt="after updating with add-thing" /></p><p>And 🎉, the app-db state updated!</p><p>Cool =)...</p><p>Now what happens if we do it again?</p><p><img src="/posts/fulcro-basics/mutations-after-updating-with-add-thing-twice.png" alt="after updating with add-thing twice" /></p><p>So we get another one, ok, so we can keep just adding them, works like we'd expect.</p><p>So as much as this post is getting rather long and it would be wise to wrap up, I just want to show you one thing.</p><p>Basically, I want an answer to the question why Fulcro? After all, everything I've shown you can be done within <code>re-frame</code>.</p><p>So other than the joy of learning new things, why bother?</p><p>Well, let's touch on something a little different.</p><pre><code>(defsc AnotherThing [this props]
+  {:query [:a-thing]
+   :ident :a-thing}  ;; &lt;-- Just add that =)...
+  (dom/div {:style {:border "1px solid black"}}
+    (dom/h3 "This is a AnotherThing!")
+    (pr-str props)))
+</code></pre><p>Now reload the page.</p><p><img src="/posts/fulcro-basics/after-adding-an-ident.png" alt="after adding an ident" /></p><p>Now the page looks the same, but check out our app-db.</p><p>We've got a new bottom level entry <code>:a-thing</code> 💥!</p><p>So because we gave <code>AnotherThing</code> an <code>:ident</code>, it knows that it can normalise whatever that component is given in the app-db under that <code>:ident</code>.</p><p>So now <code>:a-list-of-things</code> has been changed to only contain <code>:ident</code>'s, so instead of this:</p><pre><code>:a-list-of-things [{:a-thing "1 stuff"} {:a-thing "two stuff"} {:a-thing "💥💥💥 stuff"}]
+</code></pre><p>we see this:</p><pre><code>:a-list-of-things [[:a-thing "1 stuff"] [:a-thing "two stuff"] [:a-thing "💥💥💥 stuff"]]
+</code></pre><p>Hmm, it's not too obvious in this form, so let's add something else to our <code>:a-thing</code>:</p><p><img src="/posts/fulcro-basics/temp-added-data-to-show-normalisation.png" alt="Temporarily added more data to show normalisation" /></p><p>So you should not be able to see that <code>:a-list-of-things</code> only contains the <code>:ident</code> of the <code>:a-thing</code>, the rest of it is stored under it's own top-level key.</p><p>That's one of the cool things that Fulcro brings to the table.</p><p>By helping us to deal with normalised data when we want it, and giving us access to working with it, we reduce a lot of the issues around updating an item in the app-db and having to track all the other places copies of that item could exist and updating them as well.</p><p>So how do we mutate stuff in this form?</p><p>We use <code>merge-component</code>:</p><pre><code>(ns fulcro-starter.client
+  (:require
+   ...
+   [com.fulcrologic.fulcro.algorithms.merge :as merge]))
+
+...
+
+(defmutation add-thing
+  "Mutation: Add a thing to :a-list-of-things"
+  [params]
+  (action [{:keys [state]}]
+    (println (pr-str @state))
+    (let [class (comp/registry-key-&gt;class :fulcro-starter.client/AnotherThing)]
+      (swap! state merge/merge-component class {:a-thing "four stuff"}))))
+</code></pre><p>You're probably wondering where <code>:fulcro-starter.client/AnotherThing</code> came from, well remember when we did this:</p><pre><code>(meta (comp/get-query AnotherThing))
+#_#_=&gt; {:component fulcro-starter.client/AnotherThing, :queryid "fulcro-starter.client/AnotherThing"}
+</code></pre><p>That's where, Fulcro maintains a registry of the components that you've defined. So one of the <em>good</em> ways to do this is to lookup that registry and pass the value from there. As a rule of thumb, you don't want classes sitting in your app-db.</p><p>Now enough digressing, let's call our mutate =)...</p><p><img src="/posts/fulcro-basics/mutations-after-updating-with-add-thing-ident.png" alt="after updating with add-thing+ident" /></p><p>Ok, so something odd happened, if you look at our UI nothing has changed and in our app-db, there's a new entry for "four stuff" under <code>:a-thing</code>, what's going on?</p><p>We'll if you look at <code>:a-list-of-things</code> you'll notice that it hasn't been updated with the ident for the bit of data we added, specifically <code>[:a-thing "four stuff"]</code>.</p><p>We need to tell our mutate to update that location.</p><pre><code>(defmutation add-thing
+  "Mutation: Add a thing to :a-list-of-things"
+  [params]
+  (action [{:keys [state]}]
+    (println (pr-str @state))
+    (let [class (comp/registry-key-&gt;class :fulcro-starter.client/AnotherThing)]
+      (swap! state merge/merge-component class {:a-thing "four stuff"}
+        :append [:a-list-of-things]))))
+</code></pre><p><img src="/posts/fulcro-basics/mutations-after-updating-with-add-thing-ident-append.png" alt="after updating with add-thing+ident+append" /></p><p>And done! =)...</p><p>If you're wondering how I knew about <code>:append</code>, it's one of the <a href="http://book.fulcrologic.com/#_basic_targeting">targeting options listed in the manual</a>, others that I've used are <code>:prepend</code> and <code>:replace</code>.</p><p>Well, that was a bit of a whirlwind tour of Fulcro, there's a lot that I didn't cover, but I wanted to keep this relatively focused.</p><p>Hopefully, that helped and let me know if any part of this ended up being confusing =)...</p><div class="footnotes"><hr /><ol><li id="fn-1"><p><a href="https://www.youtube.com/watch?v=ng-wxe0PBEg">Fulcro + re-frame</a> <a href="https://github.com/awkay/fulcro-with-reframe">github</a></p><a href="#fnref-1" class="footnote-backref">↩</a></li></ol></div>
+</div>
+
+<div id="post-tags">
+    <b>Tags: </b>
+    
+    <a href="/tag/beginner/">beginner</a>
+    
+    <a href="/tag/fulcro/">fulcro</a>
+    
+</div>
+
+
+    <div id="prev-next">
+        
+        <a href="/post/2020-05-12-Crunching-the-gears/">&laquo; Crunching the Gears</a>
+        
+        
+        <a class="right" href="/post/2020-04-26-Websocket-Subscriptions-in-Fulcro/">Websocket Subscriptions in Fulcro &raquo;</a>
+        
+    </div>
+
+    
+
+
+</div>
+
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div id="sidebar">
+                <h3>Links</h3>
+                <ul id="links">
+                    <li><a href="https://pinboard.in/u:folcon">Pinboard</a></li>
+                    <li><a href="https://folcon.github.io/my-little-roguelike/start.html">My Little Roguelike</a></li>
+                    
+                </ul>
+                
+                <div id="recent">
+                    <h3>Recent Posts</h3>
+                    <ul>
+                        
+                        <li><a href="/post/2020-05-12-Crunching-the-gears/">Crunching the Gears</a></li>
+                        
+                        <li><a href="/post/fulcro-basics/2020-05-12-Fulcro-via-re-frame/">Fulcro via re-frame</a></li>
+                        
+                        <li><a href="/post/2020-04-26-Websocket-Subscriptions-in-Fulcro/">Websocket Subscriptions in Fulcro</a></li>
+                        
+                    </ul>
+                </div>
+                
+                
+                <div id="tags">
+                    <h3>Tags</h3>
+                    <ul>
+                        
+                        <li><a href="/tag/release/">release</a></li>
+                        
+                        <li><a href="/tag/skills/">skills</a></li>
+                        
+                        <li><a href="/tag/delaunator-cljc/">delaunator-cljc</a></li>
+                        
+                        <li><a href="/tag/sessions/">sessions</a></li>
+                        
+                        <li><a href="/tag/postgres/">postgres</a></li>
+                        
+                        <li><a href="/tag/beginner/">beginner</a></li>
+                        
+                        <li><a href="/tag/heroku/">heroku</a></li>
+                        
+                        <li><a href="/tag/getting-unstuck/">getting-unstuck</a></li>
+                        
+                        <li><a href="/tag/reflection/">reflection</a></li>
+                        
+                        <li><a href="/tag/fulcro/">fulcro</a></li>
+                        
+                        <li><a href="/tag/websockets/">websockets</a></li>
+                        
+                        <li><a href="/tag/performance/">performance</a></li>
+                        
+                        <li><a href="/tag/subscriptions/">subscriptions</a></li>
+                        
+                    </ul>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    <footer>Copyright &copy; 2020 Folcon
+        <p style="text-align: center;">Powered by <a href="http://cryogenweb.org">Cryogen</a></p></footer>
+</div>
+<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+<script src="/js/highlight.pack.js" type="text/javascript"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+
+</body>
+</html>

@@ -4,7 +4,7 @@
     <meta charset="utf-8"/>
     <title>Alien Brain: Fulcro via re-frame</title>
     
-<meta name="keywords" content="release,skills,re-frame,delaunator-cljc,sessions,postgres,beginner,heroku,getting-unstuck,reflection,fulcro,websockets,performance,subscriptions">
+<meta name="keywords" content="release,skills,re-frame,delaunator-cljc,sessions,postgres,beginner,heroku,getting-unstuck,reflection,fulcro,pathom,websockets,performance,subscriptions">
 
 <meta name="description" content="I couldn&#39;t find some cliff notesSo I wrote some">
 
@@ -282,7 +282,7 @@ npx shadow-cljs watch main
   [params]
   (action [{:keys [state]}]
     (println (pr-str @state))))
-</code></pre><p>Now ultimately we want to add a thing to our list, but let's take this whole process one step at a time =)...</p><pre><code>comp/transact! app [(add-thing {})])
+</code></pre><p>Now ultimately we want to add a thing to our list, but let's take this whole process one step at a time =)...</p><pre><code>(comp/transact! app [(add-thing {})])
 #_#_=&gt; #uuid"4c24d1ea-1e1e-40db-8601-c4e5f824f7ce"
 {:fulcro.inspect.core/app-id "fulcro-starter.client/Thing", :a-list-of-things [{:a-thing "1 stuff"} {:a-thing "two stuff"} {:a-thing "💥💥💥 stuff"}], :fulcro.inspect.core/app-uuid #uuid "1f775d10-dfbe-4960-b90e-4a2d5927c3e0", :com.fulcrologic.fulcro.application/active-remotes #{}}
 </code></pre><p>Ok so it spat out a uuid, and printed out the current state of the app-db!</p><p>Looking at what came out, we want to update <code>:a-list-of-things</code> <code>conj</code>'ing to it a new {:a-thing "four stuff"}, or something like that.</p><p>So let's try it!</p><pre><code>(defmutation add-thing
@@ -371,11 +371,11 @@ npx shadow-cljs watch main
                     <h3>Recent Posts</h3>
                     <ul>
                         
+                        <li><a href="/post/fulcro-basics/2020-05-26-Sprinkling-in-some-server-side/">Sprinkling in some server-side</a></li>
+                        
                         <li><a href="/post/2020-05-12-Crunching-the-gears/">Crunching the Gears</a></li>
                         
                         <li><a href="/post/fulcro-basics/2020-05-12-Fulcro-via-re-frame/">Fulcro via re-frame</a></li>
-                        
-                        <li><a href="/post/2020-04-26-Websocket-Subscriptions-in-Fulcro/">Websocket Subscriptions in Fulcro</a></li>
                         
                     </ul>
                 </div>
@@ -406,6 +406,8 @@ npx shadow-cljs watch main
                         <li><a href="/tag/reflection/">reflection</a></li>
                         
                         <li><a href="/tag/fulcro/">fulcro</a></li>
+                        
+                        <li><a href="/tag/pathom/">pathom</a></li>
                         
                         <li><a href="/tag/websockets/">websockets</a></li>
                         

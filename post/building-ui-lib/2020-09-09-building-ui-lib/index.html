@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Alien Brain: Building a UI Lib</title>
+    
+<meta name="keywords" content="release,skills,ui,re-frame,delaunator-cljc,sessions,postgres,beginner,heroku,getting-unstuck,reflection,fulcro,pathom,websockets,performance,subscriptions">
+
+<meta name="description" content="Let&#39;s separate our frontend and our main codeBecause my designers shouldn&#39;t have to learn all of clojure!">
+
+<meta property="og:description" content="Let&#39;s separate our frontend and our main codeBecause my designers shouldn&#39;t have to learn all of clojure!">
+
+<meta property="og:url" content="//folcon.github.io/post/building-ui-lib/2020-09-09-building-ui-lib/" />
+<meta property="og:title" content="Building a UI Lib" />
+<meta property="og:type" content="article" />
+
+    <link rel="canonical" href="//folcon.github.io/post/building-ui-lib/2020-09-09-building-ui-lib/">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="//fonts.googleapis.com/css?family=Alegreya:400italic,700italic,400,700" rel="stylesheet"
+          type="text/css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css">
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/styles/default.min.css">
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+
+
+<nav class="navbar navbar-default">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Alien Brain</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav navbar-right">
+                <li ><a href="/">Home</a></li>
+                <li
+                ><a href="/archives/">Archives</a></li>
+                
+                <li><a href="/feed.xml">RSS</a></li>
+            </ul>
+        </div><!--/.nav-collapse -->
+    </div><!--/.container-fluid -->
+</nav>
+
+
+<div class="container">
+
+
+    <div class="row">
+        <div class="col-lg-9">
+            <div id="content">
+                
+<div id="post">
+    <div class="post-header">
+    <div id="post-meta" class="row">
+        <div class="col-lg-6">9 September 2020</div>
+        
+    </div>
+    <h2>Building a UI Lib</h2>
+</div>
+<div>
+    
+    <h3 id="lets-separate-our-frontend-and-our-main-code">Let's separate our frontend and our main code</h3><h4 id="because-my-designers-shouldnt-have-to-learn-all-of-clojure">Because my designers shouldn't have to learn all of clojure!</h4><pre><code>NOTE: I feel that this is still really rough.
+
+I basically did this because I was building this anyway and thought that putting together a quick tutorial while I was at it would be a good use of time =)...
+</code></pre><p>Why am I using leiningen? Because I haven't quite figured out how to do checkouts related things with deps.edn =)...</p><h1 id="setup">Setup</h1><p>You can just run the commands verbatim and follow along, but if you'd rather have a <a href="https://github.com/Folcon/ui-lib-example/tree/a4d57fa9cec0398f6aeadbba87023290264335c8">github repo</a>, it's there =)...</p><h1 id="create-the-ui-library">Create the UI library</h1><p><code>lein new figwheel-main ui-lib -- --reagent</code></p><h1 id="create-the-main-project">Create the Main Project</h1><p><code>lein new figwheel-main main-app -- --reagent</code></p><p>NOTE: I do tend to change the <code>fig:build</code> to <code>fig:dev</code> and create an explict <code>:clean-targets</code> like so:</p><pre><code>:clean-targets ^{:protect false} ["target" "resources/public/cljs-out"]
+</code></pre><p>So I can use <code>lein clean</code> to clear all the compiled stuff. So just a quick note about that =)...</p><p>Now place both of these within a single parent directory so for example:</p><pre><code>ui-lib-example
+├── main-app
+└── ui-lib
+</code></pre><p>Now cd into each with separate terminals =)...</p><p>Now let's add <code>[ui-lib "0.1.0-SNAPSHOT"]</code> to the bottom of <code>main-app</code>'s <code>project.clj</code> dependencies.</p><pre><code>:dependencies [[org.clojure/clojure "1.10.1"]
+               [org.clojure/clojurescript "1.10.773"]
+               [reagent "0.10.0"]
+               [ui-lib "0.1.0-SNAPSHOT"]]
+</code></pre><p>Then in <code>ui-lib</code> let's create a namespace <code>ui-lib.layout.index</code>:</p><pre><code>(ns ui-lib.layout.index)
+
+(defn app-panel []
+  [:div
+   [:h1 "Main UI"]
+   [:h3 "This is a test header!"]])
+</code></pre><p>Right, now we need to run <code>lein install</code> within <code>ui-lib</code>.</p><p>Then we need to create a <code>checkouts</code> folder within <code>main-app</code> and symlink <code>ui-lib</code> into it.</p><pre><code>mkdir checkouts
+ln -s ../../ui-lib .
+</code></pre><p>Right, now to keep things just a little tidy I'm going to create <code>main-app.runtime</code> in <code>main-app</code></p><pre><code>(ns main-app.runtime
+  (:require [ui-lib.layout.index :as index]))
+
+(def app-panel index/app-panel)
+</code></pre><p>Then in <code>main-app.core</code> we do this:</p><pre><code>(ns ^:figwheel-hooks main-app.core
+  (:require
+   [goog.dom :as gdom]
+   [reagent.core :as reagent :refer [atom]]
+   [reagent.dom :as rdom]
+   [main-app.runtime :refer [app-panel]]))
+
+(println "This text is printed from src/main_app/core.cljs. Go ahead and edit it and see reloading in action.")
+
+(defn multiply [a b] (* a b))
+
+(defn get-app-element []
+  (gdom/getElement "app"))
+
+(defn mount [el]
+  (rdom/render [app-panel] el))
+
+(defn mount-app-element []
+  (when-let [el (get-app-element)]
+    (mount el)))
+
+;; conditionally start your application based on the presence of an "app" element
+;; this is particularly helpful for testing this ns without launching the app
+(mount-app-element)
+
+;; specify reload hook with ^;after-load metadata
+(defn ^:after-load on-reload []
+  (mount-app-element))
+  ;; optionally touch your app-state to force rerendering depending on
+  ;; your application
+  ;; (swap! app-state update-in [:__figwheel_counter] inc)
+</code></pre><p>I'll leave doing a basic tidy up to you, removing things like <code>multiply</code> and the odd <code>println</code>'s, just don't forget to also remove the relevant tests...</p><p>You can also make <code>ui-lib.core</code> the same as the above, just replacing the namespace import with <code>ui-lib.layout.index</code> instead of <code>main-app.runtime</code>.</p><p>Now running <code>lein fig:dev</code> in either terminal should show this:</p><p><img src="/posts/building-ui-lib/001-initial-setup.png" alt="Initial Setup" /></p><p>However, you will notice that making any edits to the <code>app-panel</code> function in <code>ui-lib.layout.index</code> won't trigger a reload if you're running <code>lein fig:dev</code> in the <code>main-app</code>.</p><p>Now that won't do at all! We want to be able to have nice reloading functionality in the application when we're tweaking UI within the ui library, otherwise putting together a nice bunch of UI is going to be a big pain! So let's fix that.</p><p>All we've got to do is tell <code>dev.cljs.edn</code> in <code>main-app</code> to watch <code>checkouts/ui-lib</code>.
+NOTE: I've managed to watch <code>checkouts</code> in the past, but for some reason, this isn't working at the moment, probably because I'm testing this on wsl, but 🤷, this works!</p><pre><code>^{:open-url   false
+  :watch-dirs ["test" "src" "checkouts/ui-lib"]
+  :css-dirs ["resources/public/css"]
+  :auto-testing true}
+{:main main-app.core}
+</code></pre><p>However, we should also add <code>checkouts/ui-lib</code> to our classpath or we'll get an error telling us that figwheel is trying to dynamically add <code>checkouts/ui-lib</code> to our classpath. Let's do this however in our <code>:dev</code> profile:</p><pre><code>:profiles {:dev {:dependencies [[com.bhauman/figwheel-main "0.2.11"]
+                                [com.bhauman/rebel-readline-cljs "0.1.4"]]
+                 :source-paths ["checkouts/ui-lib"]
+                 :resource-paths ["target"]
+                 ;; need to add the compiled assets to the :clean-targets
+                 :clean-targets ^{:protect false} ["target"]}}
+</code></pre><p>Now if you go into <code>"This is a test header!"</code> and change <code>"This is an alt test header!"</code> to <code>ui-lib.layout.index</code> you should see this in your figwheel page 🎉:</p><p><img src="/posts/building-ui-lib/002-post-live-reload.png" alt="Post getting live reload working!" /></p><h1 id="working-on-the-ui-bits">Working on the UI bits!</h1><p>Now time to add some basic deps to the projects!</p><p>To <code>ui-lib</code>'s deps in <code>project.clj</code> we want to add:</p><pre><code>:dependencies [[...
+               [reagent "0.10.0"]
+               [re-frame "1.0.0-rc2"]
+               [ui-lib "0.1.0-SNAPSHOT"]]
+</code></pre><p>And to <code>main-app</code>'s deps in <code>project.clj</code> we want to add:</p><pre><code>:dependencies [[...
+               [reagent "0.10.0"]
+               [re-frame "1.0.0-rc2"]
+               [clj-commons/secretary "1.2.5-SNAPSHOT"]
+               [ui-lib "0.1.0-SNAPSHOT"]]
+</code></pre><p>This allows us to build complex components in either of them, while also having routing functionality in the <code>main-app</code>.</p><p>Here you might want to rerun <code>lein fig:dev</code> in the <code>main-app</code> project and tweak <code>ui-lib.layout.index</code> just to check live reload is still working fine! Assuming it's all working well we'll continue =)...</p><h1 id="plugging-in-some-basic-routing">Plugging in some basic routing</h1><p>Ok, let's get some routing going =)...</p><p>First let's make <code>app-panel</code> in the <code>ui-lib</code> something more appropriate, as the <code>main-app</code> is what's going to be handling routing.</p><p>So let's refactor it to be called <code>home-page</code>, don't forget to change it in <code>ui-lib.core</code> as well:</p><pre><code>(defn home-page []
+  [:div
+   [:h1 "Home Page"]])
+</code></pre><p>Let's also create a new page called <code>about-page</code> so we can test our routing as well!</p><pre><code>(defn about-page []
+  [:div
+   [:h1 "About Page"]])
+</code></pre><p>Great! Now let's update <code>app-panel</code> so that we can use these newly created pages!</p><pre><code>(ns main-app.runtime
+  (:require [re-frame.core :as rf]
+            [ui-lib.layout.index :as index]
+            [main-app.routes :as routes]))
+
+
+(defn app-panel []
+  (let [current-page (rf/subscribe [::routes/current-page])]
+    (fn []
+      [:div
+       (condp = @current-page
+         :about-page
+         [index/about-page]
+         [index/home-page])])))
+</code></pre><p>If everything is working correctly, tweaking the <code>home-page</code> function in <code>ui-lib</code> should still make live reloading work!</p><p>Now let's create <code>main-app.routes</code>:</p><pre><code>(ns main-app.routes
+  (:require-macros [secretary.core :refer [defroute]])
+  (:import [goog History]
+           [goog.history Html5History EventType])
+  (:require [secretary.core :as secretary]
+            [goog.events :as gevents]
+            [re-frame.core :as rf]))
+
+
+;;; Events
+(rf/reg-event-db
+  ::set-page
+  (fn [_db [_ page]]
+    (assoc {} ::current-page page)))
+
+
+;;; Subs
+(rf/reg-sub
+  ::current-page
+  (fn [db [_]]
+    (get db ::current-page)))
+
+
+(defn get-token []
+  js/window.location.hash)
+
+(defn make-history []
+  (doto (Html5History.)
+    (.setPathPrefix (str js/window.location.protocol
+                         "//"
+                         js/window.location.host))
+    (.setUseFragment true)))
+
+(defn handle-url-change [e]
+  (js/console.log (str "Nav To: " (get-token)))
+  (when-not (.-isNavigation e)
+    (js/console.log "Token set programmatically")
+    (js/window.scrollTo 0 0))
+  (secretary/dispatch! (get-token)))
+
+(defonce history (make-history))
+
+(defn hook-browser-navigation! []
+  (doto history
+    (gevents/listen
+      EventType.NAVIGATE
+      #(handle-url-change %))
+    (.setEnabled true)))
+
+(defn nav! [token]
+  (.setToken history token))
+
+(defn make-link
+  ([href-str] (make-link {} href-str href-str))
+  ([attrs href-str] (make-link attrs href-str href-str))
+  ([attrs href href-str] (merge attrs
+                           {:href href
+                            :on-click #(do
+                                         (.preventDefault %)
+                                         (nav! href-str))})))
+
+(defn make-home-link []
+  (make-link {} js/window.location.href "/"))
+
+(defn make-page-link [page-kw]
+  (make-link {} js/window.location.href (str "/" (name page-kw))))
+
+(defn app-routes []
+  (secretary/set-config! :prefix "#")
+  (defroute "/" []
+    (rf/dispatch [::set-page nil]))
+
+  (defroute "/about" []
+    (rf/dispatch [::set-page :about-page]))
+
+  (hook-browser-navigation!))
+</code></pre><p>Now let's go to <code>main-app.core</code> and add <code>[main-app.routes :refer [app-routes]]</code> to the ns <code>:require</code> and then update <code>mount-app-element</code>:</p><pre><code>(defn mount-app-element []
+  (when-let [el (get-app-element)]
+    (app-routes)
+    (mount el)))
+</code></pre><p>Great, now if you navigate to <code>/</code> or <code>/#/about</code> the home and about page should be viewable!</p><p>Let's add a navbar to the page to make navigation easier!</p><pre><code>(defn nav-bar-panel []
+  [:nav
+   [:a (routes/make-home-link) "Main App"]
+   [:div
+    [:ul
+     [:li [:a (routes/make-home-link) "Home"]]
+     [:li [:a (routes/make-page-link :about) "About"]]]]])
+
+(defn app-panel []
+  (let [current-page (rf/subscribe [::routes/current-page])]
+    (fn []
+      [:div
+       [nav-bar-panel]
+       (condp = @current-page
+         :about-page
+         [index/about-page]
+         [index/home-page])])))
+</code></pre><p><img src="/posts/building-ui-lib/003-post-navbar.png" alt="Post adding a navbar" /></p><h1 id="what-about-npm">What about npm?</h1><p>So the first step to get npm playing nicely with all this is adding a new entry into <code>project.clj</code>'s <code>:aliases</code>:</p><pre><code>:aliases {...
+          "fig:npm"   ["run" "-m" "figwheel.main" "--" "--install-deps"]
+          ...}
+</code></pre><p>Not to test out the waters we want to check that any deps we add get pulled in, so create an <code>deps.cljs</code> file within <code>ui-lib/src</code>.</p><pre><code>{:npm-deps {"react-transition-group" "4.4.1"}}
+</code></pre><p>Now just run <code>lein fig:npm</code> in <code>ui-lib</code>, this should create a <code>package.json</code> file like:</p><pre><code>{
+  "dependencies": {
+    "@cljs-oss/module-deps": "^1.1.1",
+    "react": "^16.13.0",
+    "react-dom": "^16.13.0",
+    "react-transition-group": "^4.4.1"
+  }
+}
+</code></pre><p>Now let's do the same in <code>main-app</code>, adding the alias and just running <code>lein fig:npm</code>, this should create the same <code>package.json</code> file as above!</p><p>We can also create a <code>deps.cljs</code> file in the src folder of <code>main-app</code> if we wish to give it it's own npm deps, however in this occasion I'll keep it empty.</p><pre><code>{:npm-deps {}}
+</code></pre><p>Running <code>lein fig:npm</code> again shows no difference to the <code>package.json</code> created, so that's all working =)...</p><h1 id="getting-webpack-up">Getting webpack up</h1><p>We need webpack to make this all work nicely, and I personally like my javascript to be served from a fixed location <code>js/compiled/app.js</code>, so I'm going to change the <code>index.html</code> inside the <code>resources/public</code> folder of <code>main-app</code> from this line:</p><pre><code>&lt;script src="cljs-out/dev-main.js" type="text/javascript"&gt;&lt;/script&gt;
+</code></pre><p>to this:</p><pre><code>&lt;script src="js/compiled/app.js" type="text/javascript"&gt;&lt;/script&gt;
+</code></pre><p>We should adjust the <code>dev.cljs.edn</code> to take this into account:</p><pre><code>^{:final-output-to "resources/public/js/compiled/app.js"
+  :open-url   false
+  :watch-dirs ["test" "src" "checkouts/ui-lib"]
+  :css-dirs ["resources/public/css"]
+  :auto-testing true}
+{:main main-app.core
+ :target :bundle
+ :bundle-cmd {:none ["npx" "webpack" "--mode=development" :output-to "-o" :final-output-to]}
+ :output-dir "resources/public/js/compiled/out"
+ :source-map-timestamp true}
+</code></pre><p>Ok now we need to setup webpack, specifically the @next version:</p><pre><code>npm i -D webpack-cli
+npm i -D webpack@next
+</code></pre><p>If you have an issue and are ok with reinstalling then just uninstall it first:</p><pre><code>npm rm -g webpack-cli
+npm rm -g webpack
+</code></pre><p>We also need to create a <code>webpack.config.js</code> configuration file:</p><pre><code>module.exports = {
+    target: 'web',
+    entry: './resources/public/js/compiled/out/main.js',
+    output: {
+        path: __dirname + "/out",
+        filename: 'app.js'
+    },
+    resolve: {
+        alias: {'xmlhttprequest': false},
+        modules: ['./resources/public/js/compiled/out/', './node_modules']
+    }
+}
+</code></pre><p>Pay careful attention to the file paths for modules and entry, those should match the file generated by running the <code>lein fig:dev</code> so that webpack can perform the next step.</p><p>If you see things failing at the webpack step or if everything seems to build correctly but the page doesn't load properly, try to run the basic webpack command to ensure it isn't silently failing there:</p><pre><code>npx webpack --mode=development resources/public/js/compiled/out/main.js -o resources/public/js/compiled/app.js
+</code></pre><p>If everything works you'll see the same page that you had before:
+<img src="/posts/building-ui-lib/003-post-navbar.png" alt="Post adding a navbar" /></p><p>However this time we're running the application through webpack! So we can pull in npm libraries!</p><p>Let's test this out =)...</p><p>We're going to add a testimonial carousel to our home page, let's first create <code>ui-lib.layout.carousel</code>:</p><pre><code>(ns ui-lib.layout.carousel
+  (:require [reagent.core :as r]
+            [react]
+            [react-transition-group :refer [Transition TransitionGroup CSSTransition]]))
+
+
+(defn carousel-child
+  [{:keys [direction children in]}]
+  [:&gt; CSSTransition {:in in
+                     :timeout 500
+                     :class-names {:enter (str "slide-enter-" (name direction))
+                                   :enter-active "slide-enter-active"
+                                   :exit "slide-exit"
+                                   :exit-active (str "slide-exit-active-" (name direction))
+                                   :exit-done "slide-exit-done"}}
+   (fn [state]
+     (r/as-element
+       (into [:div {:class "slide-base"}] children)))])
+
+(defn carousel
+  [{:keys [direction class]}]
+  (let [children (r/children (r/current-component))
+        k (-&gt; children first meta :key)]
+    [:&gt; TransitionGroup {:class ["transition-group" class]
+                         :childFactory (fn [child]
+                                         (react/cloneElement child #js {:direction direction}))}
+     (let [child (r/reactify-component carousel-child)]
+       (r/create-element child #js {:key k
+                                    :direction direction
+                                    :children children}))]))
+
+(defn on-click
+  [direction]
+  (fn [{n :n}]
+    {:n (case direction
+          :left (dec n)
+          :down (dec n)
+          :up (inc n)
+          :right (inc n))
+     :dir direction}))
+
+
+(defn carousel-panel [slides]
+  (let [state (r/atom {:n 0 :dir :left})]
+    (fn [slides]
+      (let [size (count slides)]
+        [:div.carousel
+         [:div.container
+          [:div
+           (when (&gt; size 1)
+            [:div.col.col-md
+             [:button {:on-click #(swap! state (on-click :left))}
+              "&lt;"]])
+           [:div
+            (let [slide (-&gt;&gt; (count slides)
+                          (mod (:n @state))
+                          (nth slides))
+                  {:keys [id colour content] :or {colour :white}} slide]
+              [:div.frame {:style {:max-width "300px" :max-height "270px"}}
+               [carousel {:direction (:dir @state)}
+                ^{:key id}
+                [:div.slide {:style {:background-color colour :min-width "200px" :min-height "250px" :border-radius "10px"}}
+                 content]]])]
+           (when (&gt; size 1)
+             [:div
+              [:button {:on-click #(swap! state (on-click :right))}
+               "&gt;"]])]]]))))
+</code></pre><p>And then add it to the home page:</p><pre><code>(ns ui-lib.layout.index
+  (:require [ui-lib.layout.carousel :refer [carousel-panel]]))
+
+
+(defn home-page []
+  [:div
+   [:h1 "Home Page"]
+   [carousel-panel
+    [{:id 0
+      :content [:div [:p.testimonial "A test testimonial"]]}
+     {:id 1
+      :content [:div [:p.testimonial "Another test testimonial"]]}]]])
+...
+</code></pre><p>If you have an error, try first updating the reagent version and if that doesn't work, adding the exclusions provided:</p><pre><code>[reagent "1.0.0-alpha2" :exclusions [cljsjs/react cljsjs/react-dom]]
+</code></pre><p>Reagent can at times be a little bit finicky with webpack / :npm-deps.</p><p>Great! Now when the page re-renders you should see a carousel:</p><p><img src="/posts/building-ui-lib/004-post-carousel.png" alt="Post adding a carousel" /></p><p>Doesn't look that great, does it?</p><p>Let's add some basic styling for it to <code>resources/css/style.css</code> in <code>main-app</code>:</p><pre><code>@keyframes fade {
+    0%,100% { opacity: 0 }
+    50% { opacity: 1 }
+}
+
+.carousel-indicators li {
+    background-color: lightgray;
+}
+
+.carousel-indicators .active {
+    background-color: #007bff;
+}
+
+.carousel .container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.carousel .frame {
+    width: 600px;
+    height: 600px;
+}
+
+.carousel .row {
+    align-items: center;
+    height: 100%;
+}
+
+.carousel .transition-group {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+.carousel .slide {
+    width: 100%;
+    height: 100%;
+}
+
+.carousel .slide-base {
+    transition: transform 500ms cubic-bezier(.645, .045, .355, 1);
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    left: 0;
+}
+
+.carousel .slide-enter-left {
+    transform: translate(100%, 0);
+}
+
+.carousel .slide-enter-right {
+    transform: translate(-100%, 0);
+}
+
+.carousel .slide-enter-up {
+    transform: translate(0, 100%);
+}
+
+.carousel .slide-enter-down {
+    transform: translate(0, -100%);
+}
+
+.carousel .slide-enter-active {
+    transform: translate(0, 0);
+}
+
+.carousel .slide-exit {
+    transform: translate(0, 0);
+}
+
+.carousel .slide-exit-active-left {
+    transform: translate(-100%, 0);
+}
+
+.carousel .slide-exit-active-right {
+    transform: translate(100%, 0);
+}
+
+.carousel .slide-exit-active-up {
+    transform: translate(0, -100%);
+}
+
+.carousel .slide-exit-active-down {
+    transform: translate(0, 100%);
+}
+
+.carousel .slide-exit-done {
+    display: none;
+}
+</code></pre><p>Now that looks a little bit better:
+<img src="/posts/building-ui-lib/005-post-simple-styling.png" alt="Post adding a carousel" /></p><p>Ok cool! There's still some bookkeeping to do for this bit however, let's update our <code>project.clj</code>:</p><pre><code>:clean-targets ^{:protect false} ["target" "resources/public/js/compiled"]
+</code></pre><p>We should also make sure it's possible to run the <code>lein fig:dev</code> from within <code>ui-lib</code> if we need it for debug purposes =)...</p><p>So you'll need to:</p><ol><li>Update the <code>index.html</code> inside the <code>resources/public</code> folder of <code>ui-lib</code> to:</li></ol><pre><code>&lt;script src="js/compiled/app.js" type="text/javascript"&gt;&lt;/script&gt;
+</code></pre><ol start="2"><li>Adjust the <code>dev.cljs.edn</code>:</li></ol><pre><code>^{:final-output-to "resources/public/js/compiled/app.js"
+  :open-url   false
+  :watch-dirs ["test" "src"]
+  :css-dirs ["resources/public/css"]
+  :auto-testing true}
+{:main ui-lib.core
+ :target :bundle
+ :bundle-cmd {:none ["npx" "webpack" "--mode=development" :output-to "-o" :final-output-to]}
+ :output-dir "resources/public/js/compiled/out"
+ :source-map-timestamp true}
+</code></pre><ol start="3"><li>Setup webpack:</li></ol><pre><code>npm i -D webpack-cli
+npm i -D webpack@next
+</code></pre><ol start="4"><li>Create a <code>webpack.config.js</code> configuration file:</li></ol><pre><code>module.exports = {
+    target: 'web',
+    entry: './resources/public/js/compiled/out/main.js',
+    output: {
+        path: __dirname + "/out",
+        filename: 'app.js'
+    },
+    resolve: {
+        alias: {'xmlhttprequest': false},
+        modules: ['./resources/public/js/compiled/out/', './node_modules']
+    }
+}
+</code></pre><p>If that all goes well calling, within the <code>ui-lib</code>:</p><pre><code>lein fig:npm
+lein fig:dev
+</code></pre><p>should let you see this!</p><p><img src="/posts/building-ui-lib/006-post-getting-webpack-ui-lib-working.png" alt="Post getting it all of the webpack working in ui-lib" /></p><h1 id="making-it-easy-to-just-start">Making it easy to just start</h1><p>One of the things I like to do is just make it easy to jump right into coding, so I usually create a makefile with a dev alias to just jump right in =)...</p><p>In this case however, let's use leiningen's do functionality!</p><p>So add this to <code>:aliases</code>:</p><pre><code>:aliases {"dev"       ["do" "clean," "fig:npm," "fig:dev"]
+          ...}
+</code></pre><p>Now if everything works, just calling <code>lein dev</code> will get you started right away =)...</p><p>You can add that alias to both <code>ui-lib</code> and <code>app-main</code> allowing you to have a uniform way of just getting going <sup>_</sup>...</p><h1 id="changing-deps-inside-ui-lib">Changing deps inside UI Lib</h1><p>If you change the dependencies inside <code>ui-lib</code>, you may need to call <code>lein install</code> inside the project to refresh the dependencies or you might find you dependency errors.</p><p>There's still more to do such as adding css in a way we can just import it, but for now, I think this isn't unreasonable =)...</p>
+</div>
+
+<div id="post-tags">
+    <b>Tags: </b>
+    
+    <a href="/tag/ui/">ui</a>
+    
+    <a href="/tag/re-frame/">re-frame</a>
+    
+    <a href="/tag/beginner/">beginner</a>
+    
+</div>
+
+
+    <div id="prev-next">
+        
+        
+        <a class="right" href="/post/fulcro-basics/2020-05-26-Sprinkling-in-some-server-side/">Sprinkling in some server-side &raquo;</a>
+        
+    </div>
+
+    
+
+
+</div>
+
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div id="sidebar">
+                <h3>Links</h3>
+                <ul id="links">
+                    <li><a href="https://pinboard.in/u:folcon">Pinboard</a></li>
+                    <li><a href="https://folcon.github.io/my-little-roguelike/start.html">My Little Roguelike</a></li>
+                    
+                </ul>
+                
+                <div id="recent">
+                    <h3>Recent Posts</h3>
+                    <ul>
+                        
+                        <li><a href="/post/building-ui-lib/2020-09-09-building-ui-lib/">Building a UI Lib</a></li>
+                        
+                        <li><a href="/post/fulcro-basics/2020-05-26-Sprinkling-in-some-server-side/">Sprinkling in some server-side</a></li>
+                        
+                        <li><a href="/post/2020-05-12-Crunching-the-gears/">Crunching the Gears</a></li>
+                        
+                    </ul>
+                </div>
+                
+                
+                <div id="tags">
+                    <h3>Tags</h3>
+                    <ul>
+                        
+                        <li><a href="/tag/release/">release</a></li>
+                        
+                        <li><a href="/tag/skills/">skills</a></li>
+                        
+                        <li><a href="/tag/ui/">ui</a></li>
+                        
+                        <li><a href="/tag/re-frame/">re-frame</a></li>
+                        
+                        <li><a href="/tag/delaunator-cljc/">delaunator-cljc</a></li>
+                        
+                        <li><a href="/tag/sessions/">sessions</a></li>
+                        
+                        <li><a href="/tag/postgres/">postgres</a></li>
+                        
+                        <li><a href="/tag/beginner/">beginner</a></li>
+                        
+                        <li><a href="/tag/heroku/">heroku</a></li>
+                        
+                        <li><a href="/tag/getting-unstuck/">getting-unstuck</a></li>
+                        
+                        <li><a href="/tag/reflection/">reflection</a></li>
+                        
+                        <li><a href="/tag/fulcro/">fulcro</a></li>
+                        
+                        <li><a href="/tag/pathom/">pathom</a></li>
+                        
+                        <li><a href="/tag/websockets/">websockets</a></li>
+                        
+                        <li><a href="/tag/performance/">performance</a></li>
+                        
+                        <li><a href="/tag/subscriptions/">subscriptions</a></li>
+                        
+                    </ul>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    <footer>Copyright &copy; 2020 Folcon
+        <p style="text-align: center;">Powered by <a href="http://cryogenweb.org">Cryogen</a></p></footer>
+</div>
+<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+<script src="/js/highlight.pack.js" type="text/javascript"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+
+</body>
+</html>
